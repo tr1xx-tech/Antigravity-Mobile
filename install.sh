@@ -99,6 +99,7 @@ if [ -z "$PREFIX" ] || [ ! -d "/data/data/com.termux/files/usr" ]; then
 fi
 
 step "Initializing Host Environment (Termux System)"
+info "Updating Termux repository mirrors (this may take a few moments)..."
 pkg update -y >/dev/null 2>&1 || true
 
 
