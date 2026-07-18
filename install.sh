@@ -195,6 +195,22 @@ if [ ! -x "/opt/antigravity/antigravity" ]; then
     [ -f "/opt/antigravity/Antigravity" ] && mv /opt/antigravity/Antigravity /opt/antigravity/antigravity
     chmod +x /opt/antigravity/antigravity
 fi
+info "Configuring Openbox and window manager bounds..."
+
+# Configure Openbox for strict kiosk mode natively (minimal rc.xml)
+mkdir -p /root/.config/openbox
+cat << 'EOF_RC' > /root/.config/openbox/rc.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <applications>
+    <application class="*">
+      <decor>no</decor>
+      <maximized>yes</maximized>
+    </application>
+  </applications>
+</openbox_config>
+EOF_RC
+
 # Create custom xdg-open to redirect browser launches to host via FIFO
 cat << 'EOF_XDG' > /usr/local/bin/xdg-open
 #!/bin/bash
@@ -467,13 +483,8 @@ DEBUG_MODE=0
 for arg in "$@"; do [ "$arg" == "--debug" ] && DEBUG_MODE=1; done
 
 if ! pgrep -f "virgl_test_server_android" > /dev/null 2>&1; then virgl_test_server_android >/dev/null 2>&1 & fi
-if ! pgrep -f "termux-x11" > /dev/null 2>&1; then
-    if command -v termux-x11-preference >/dev/null 2>&1; then
-        termux-x11-preference "displayResolutionMode"="native" >/dev/null 2>&1 || true
-        termux-x11-preference "fullscreen"="true" >/dev/null 2>&1 || true
-    fi
-    termux-x11 :0 >/dev/null 2>&1 & sleep 1
-fi
+termux-x11-preference fullscreen:true displayStretch:true >/dev/null 2>&1 || true
+if ! pgrep -f "termux-x11" > /dev/null 2>&1; then termux-x11 :0 >/dev/null 2>&1 & sleep 1; fi
 
 if [ "$DEBUG_MODE" -eq 0 ]; then
     if ! am start -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1; then
