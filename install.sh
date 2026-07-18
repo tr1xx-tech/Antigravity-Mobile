@@ -78,7 +78,7 @@ draw_banner() {
     echo -e "${CYAN_BOLD}  ├${hline}┤${RESET}"
     echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Version        : ${RESET}${GREEN_BOLD}v${ver}" $(( 18 + ${#ver} ))) ${CYAN_BOLD}│${RESET}"
     echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Target OS      : ${RESET}${WHITE}Android Termux X11" 35) ${CYAN_BOLD}│${RESET}"
-    echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Architecture   : ${RESET}${WHITE}Debian PRoot Ratpoison" 39) ${CYAN_BOLD}│${RESET}"
+    echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Architecture   : ${RESET}${WHITE}Debian PRoot Openbox" 37) ${CYAN_BOLD}│${RESET}"
     echo -e "${CYAN_BOLD}  └${hline}┘${RESET}"
 }
 
@@ -168,12 +168,12 @@ info "Updating Debian package lists..."
 apt-get update -y >/dev/null 2>&1
 
 info "Installing X11, GTK, graphics, and secure keyring dependencies..."
-apt-get install -y --no-install-recommends ratpoison curl wget ca-certificates tar \
+apt-get install -y --no-install-recommends openbox curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2 libatk1.0-0 libcups2 libatk-bridge2.0-0 \
     libgtk-3-0 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri \
     dbus-x11 gnome-keyring libsecret-1-0 >/dev/null 2>&1 || \
-apt-get install -y --no-install-recommends ratpoison curl wget ca-certificates tar \
+apt-get install -y --no-install-recommends openbox curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libatk1.0-0t64 libcups2t64 libatk-bridge2.0-0t64 \
     libgtk-3-0t64 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri \
@@ -195,6 +195,23 @@ if [ ! -x "/opt/antigravity/antigravity" ]; then
     [ -f "/opt/antigravity/Antigravity" ] && mv /opt/antigravity/Antigravity /opt/antigravity/antigravity
     chmod +x /opt/antigravity/antigravity
 fi
+info "Configuring Openbox and window manager bounds..."
+
+# Configure Openbox for strict kiosk mode natively (minimal rc.xml)
+mkdir -p /root/.config/openbox
+cat << 'EOF_RC' > /root/.config/openbox/rc.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <applications>
+    <application class="*">
+      <decor>no</decor>
+      <maximized>yes</maximized>
+      <fullscreen>yes</fullscreen>
+    </application>
+  </applications>
+</openbox_config>
+EOF_RC
+
 # Create custom xdg-open to redirect browser launches to host via FIFO
 cat << 'EOF_XDG' > /usr/local/bin/xdg-open
 #!/bin/bash
@@ -209,6 +226,7 @@ chmod +x /usr/local/bin/xdg-open
 # Run script for Antigravity inside Debian
 cat << 'EOF_RUN' > /opt/antigravity/run.sh
 #!/bin/bash
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export DISPLAY=:0
 export ELECTRON_OZONE_PLATFORM_HINT=x11
 export XDG_RUNTIME_DIR=/tmp/runtime-root
@@ -244,23 +262,28 @@ export GNOME_KEYRING_PID
 # Hardware Acceleration Flags
 export GALLIUM_DRIVER=virpipe
 export MESA_GL_VERSION_OVERRIDE=4.0
-GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=egl --enable-webgl --enable-accelerated-2d-canvas --num-raster-threads=4 --disable-gpu-compositing"
+GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=egl --enable-webgl --enable-accelerated-2d-canvas --num-raster-threads=4 --start-maximized"
 
+SOFTWARE_MODE=0
 DEBUG_MODE=0
 ARGS=()
 for arg in "$@"; do
     if [ "$arg" == "--debug" ]; then
         DEBUG_MODE=1
+    elif [ "$arg" == "--software" ]; then
+        SOFTWARE_MODE=1
     else
         ARGS+=("$arg")
     fi
 done
 
-if ! pgrep -x "ratpoison" > /dev/null 2>&1; then
-    echo "set startupmessage off" > /tmp/ratpoisonrc
-    ratpoison -f /tmp/ratpoisonrc &
-    sleep 0.2
+if [ "$SOFTWARE_MODE" -eq 1 ]; then
+    export LIBGL_ALWAYS_SOFTWARE=1
+    export GALLIUM_DRIVER=llvmpipe
+    GPU_ARGS="--disable-gpu"
 fi
+
+if ! pgrep -x "openbox" > /dev/null 2>&1; then openbox --sm-disable & sleep 0.2; fi
 
 # Launch App
 if [ "$DEBUG_MODE" -eq 1 ]; then
@@ -398,7 +421,7 @@ export DISPLAY=:0
 cleanup_and_exit() {
     trap - SIGINT SIGTERM
     pkill -TERM -P $$ 2>/dev/null || true
-    pkill -f "antigravity|ratpoison" >/dev/null 2>&1 || true
+    pkill -f "antigravity|openbox" >/dev/null 2>&1 || true
     if [ -n "$FIFO_PID" ]; then kill -9 "$FIFO_PID" 2>/dev/null || true; fi
     rm -f "/data/data/com.termux/files/usr/tmp/termux_open_fifo"
     
@@ -452,7 +475,7 @@ draw_banner() {
     echo -e "\033[1;38;5;39m  ├${hline}┤\033[0m"
     echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mVersion        : \033[0m\033[1;38;5;48mv${ver}" $(( 18 + ${#ver} ))) \033[1;38;5;39m│\033[0m"
     echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mTarget OS      : \033[0m\033[1;37mAndroid Termux X11" 35) \033[1;38;5;39m│\033[0m"
-    echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mArchitecture   : \033[0m\033[1;37mDebian PRoot Ratpoison" 41) \033[1;38;5;39m│\033[0m"
+    echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mArchitecture   : \033[0m\033[1;37mDebian PRoot Openbox" 37) \033[1;38;5;39m│\033[0m"
     echo -e "\033[1;38;5;39m  └${hline}┘\033[0m"
 }
 
@@ -470,7 +493,7 @@ fi
 DEBUG_MODE=0
 for arg in "$@"; do [ "$arg" == "--debug" ] && DEBUG_MODE=1; done
 
-if ! pgrep -f "virgl_test_server_android" > /dev/null 2>&1; then virgl_test_server_android >/dev/null 2>&1 & fi
+if ! pgrep -f "virgl_test_server_android" > /dev/null 2>&1; then VIRGL_RENDERER_USE_EGL=1 virgl_test_server_android >/dev/null 2>&1 & fi
 if ! pgrep -f "termux-x11" > /dev/null 2>&1; then termux-x11 :0 >/dev/null 2>&1 & sleep 1; fi
 
 if [ "$DEBUG_MODE" -eq 0 ]; then
@@ -527,9 +550,9 @@ PROOT_ARGS+=( --bind="/data/data/com.termux/cache" --bind="$HOME" --bind="$PREFI
 
 # Launch natively (Binary patch is now guaranteed)
 if [ "$DEBUG_MODE" -eq 1 ]; then
-    /data/data/com.termux/files/usr/bin/proot "${PROOT_ARGS[@]}" /bin/bash -c "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; /opt/antigravity/run.sh --debug" &
+    /data/data/com.termux/files/usr/bin/proot "${PROOT_ARGS[@]}" /opt/antigravity/run.sh "$@" &
 else
-    /data/data/com.termux/files/usr/bin/proot "${PROOT_ARGS[@]}" /bin/bash -c "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; /opt/antigravity/run.sh" >/dev/null 2>&1 &
+    /data/data/com.termux/files/usr/bin/proot "${PROOT_ARGS[@]}" /opt/antigravity/run.sh "$@" >/dev/null 2>&1 &
 fi
 
 wait "$!" 2>/dev/null || true
