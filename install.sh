@@ -159,28 +159,40 @@ cat << 'EOF_DEBIAN' > "$DEBIAN_SETUP_SCRIPT"
 set -e
 export DEBIAN_FRONTEND=noninteractive
 
+info() {
+    echo -e "   \033[1;36mℹ\033[0m  \033[2m$1\033[0m"
+}
+
+info "Updating Debian package lists..."
 apt-get update -y >/dev/null 2>&1
-# Install necessary X11, GTK, and GPU acceleration libs in Debian
-apt-get install -y --no-install-recommends openbox curl ca-certificates tar \
+
+info "Installing X11, GTK, and graphics dependencies..."
+apt-get install -y --no-install-recommends openbox curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2 libatk1.0-0 libcups2 libatk-bridge2.0-0 \
     libgtk-3-0 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers >/dev/null 2>&1 || \
-apt-get install -y --no-install-recommends openbox curl ca-certificates tar \
+apt-get install -y --no-install-recommends openbox curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libatk1.0-0t64 libcups2t64 libatk-bridge2.0-0t64 \
     libgtk-3-0t64 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers >/dev/null 2>&1 || true
 
 mkdir -p /opt/antigravity
 if [ ! -x "/opt/antigravity/antigravity" ]; then
+    info "Resolving Antigravity Core download URL..."
     DL_URL=$(curl -sL --compressed https://antigravity.google/download | grep -oE 'main-[A-Za-z0-9_-]+\.js' | head -n1 || true)
     if [ -n "$DL_URL" ]; then DL_URL=$(curl -sL --compressed "https://antigravity.google/$DL_URL" | grep -oE 'https://[^" ]+/linux-arm/Antigravity\.tar\.gz' | head -n1 || true); fi
     if [ -z "$DL_URL" ]; then DL_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.2.1-5287492581195776/linux-arm/Antigravity.tar.gz"; fi
-    curl -# -L "$DL_URL" -o /tmp/antigravity.tar.gz
+    
+    info "Downloading payload (this may take a minute)..."
+    wget -q --show-progress "$DL_URL" -O /tmp/antigravity.tar.gz
+    
+    info "Extracting and configuring binary..."
     tar -xzf /tmp/antigravity.tar.gz -C /opt/antigravity --strip-components=1 2>/dev/null || tar -xzf /tmp/antigravity.tar.gz -C /opt/antigravity
     rm -f /tmp/antigravity.tar.gz
     [ -f "/opt/antigravity/Antigravity" ] && mv /opt/antigravity/Antigravity /opt/antigravity/antigravity
     chmod +x /opt/antigravity/antigravity
 fi
+info "Configuring Openbox and window manager bounds..."
 
 # Configure Openbox for strict kiosk mode natively (minimal rc.xml)
 mkdir -p /root/.config/openbox
