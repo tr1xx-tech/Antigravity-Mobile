@@ -6,8 +6,8 @@
   </p>
 
   <p>
-    <a href="README_ru.md">🇷🇺 Читать на русском</a> | 
-    <a href="README.md">🇬🇧 Read in English</a>
+    <a href="README_ru.md">🇷🇺 Русский</a> | 
+    <strong>🇬🇧 English</strong>
   </p>
 
   <p>
