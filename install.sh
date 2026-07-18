@@ -79,7 +79,7 @@ draw_banner() {
     echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Version        : ${RESET}${GREEN_BOLD}v${ver}" $(( 18 + ${#ver} ))) ${CYAN_BOLD}│${RESET}"
     echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Target OS      : ${RESET}${WHITE}Android Termux X11" 35) ${CYAN_BOLD}│${RESET}"
     echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Architecture   : ${RESET}${WHITE}Debian PRoot Openbox" 37) ${CYAN_BOLD}│${RESET}"
-    echo -e "${CYAN_BOLD}  └${hline}┘${RESET}\n"
+    echo -e "${CYAN_BOLD}  └${hline}┘${RESET}"
 }
 
 on_host_interrupt() {
@@ -92,7 +92,6 @@ trap on_host_interrupt SIGINT SIGTERM
 
 clear || true
 draw_banner "$INSTALLER_VERSION"
-echo ""
 
 if [ -z "$PREFIX" ] || [ ! -d "/data/data/com.termux/files/usr" ]; then
     error "Must be executed within Termux."
