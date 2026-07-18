@@ -231,14 +231,28 @@ export ELECTRON_OZONE_PLATFORM_HINT=x11
 export XDG_RUNTIME_DIR=/tmp/runtime-root
 mkdir -p "$XDG_RUNTIME_DIR" 2>/dev/null || true
 
+# Initialize gnome-keyring-daemon (Passwordless login keyring)
+mkdir -p "$HOME/.local/share/keyrings"
+if [ ! -f "$HOME/.local/share/keyrings/default" ]; then
+    echo -n "login" > "$HOME/.local/share/keyrings/default"
+fi
+if [ ! -f "$HOME/.local/share/keyrings/login.keyring" ]; then
+    echo "[keyring]" > "$HOME/.local/share/keyrings/login.keyring"
+    echo "display-name=login" >> "$HOME/.local/share/keyrings/login.keyring"
+    echo "ctime=0" >> "$HOME/.local/share/keyrings/login.keyring"
+    echo "mtime=0" >> "$HOME/.local/share/keyrings/login.keyring"
+    echo "lock-on-idle=false" >> "$HOME/.local/share/keyrings/login.keyring"
+    echo "lock-after=false" >> "$HOME/.local/share/keyrings/login.keyring"
+    chmod 600 "$HOME/.local/share/keyrings/login.keyring" "$HOME/.local/share/keyrings/default"
+fi
+
 # Start D-Bus session if not running
 if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
     eval $(dbus-launch --sh-syntax)
     export DBUS_SESSION_BUS_ADDRESS
 fi
 
-# Initialize gnome-keyring-daemon
-mkdir -p ~/.local/share/keyrings
+# Unlock/Start the keyring daemon
 echo -n "" | gnome-keyring-daemon --unlock --components=secrets >/dev/null 2>&1 || true
 eval $(gnome-keyring-daemon --start --components=secrets)
 export GNOME_KEYRING_CONTROL
