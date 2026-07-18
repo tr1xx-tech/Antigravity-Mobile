@@ -14,15 +14,15 @@ if not bin_path.exists():
 # Check if already patched by looking at our mmap signature
 try:
     data = bytearray(bin_path.read_bytes())
-    if data.count(struct.pack("<I", 0xD3596129)) > 0 and data.count(struct.pack("<I", 0xF2E00029)) == 0:
-        print("Language server is already patched.")
+    if data.count(struct.pack("<I", 0xD2C00409)) > 0 and data.count(struct.pack("<I", 0xD2C20009)) == 0:
+        print("   \033[1;32m✓\033[0m  VA39 binary patch already applied.")
         flag_path.touch()
         exit(0)
 except Exception as e:
     print(f"Error reading {bin_path}: {e}")
     exit(1)
 
-print("Unpatched binary detected. Applying VA39 patch...")
+print("   \033[1;36mℹ\033[0m  \033[2mUnpatched binary detected. Applying VA39 patch...\033[0m")
 
 # Create backup of the unpatched binary if it doesn't exist
 if not bak_path.exists():
@@ -61,7 +61,17 @@ else:
     sec_lo, sec_hi = find_section(".text")
     if sec_lo is not None: lo, hi = sec_lo, sec_hi
 
-ubfx_count = lsl_count = mask_count = mmap_count = 0
+word_rewrites = {
+    0xD2C20009: 0xD2C00409, 0xD2C2000A: 0xD2C0040A,
+    0xF2C20008: 0xF2DFF408, 0xF2C20009: 0xF2DFF409,
+    0xD2C10009: 0xD2C00209, 0xD2C1000A: 0xD2C0020A,
+    0xF2C38008: 0xF2DFF708, 0xF2C38009: 0xF2DFF709,
+    0x92560A6C: 0x925D0A6C, 0x92560A6A: 0x925D0A6A,
+    0xD2C3000D: 0xD2C0060D, 0xD2C3000C: 0xD2C0060C,
+    0xD2C08008: 0xD2C00108,
+}
+
+ubfx_count = lsl_count = mask_count = mmap_count = tags_count = 0
 for off in range(lo, hi, 4):
     w = get(off)
     if (w & 0x7F800000) == 0x53000000:
@@ -76,25 +86,11 @@ for off in range(lo, hi, 4):
     elif w == 0xF2E00029:
         put(off, 0xD3596129)
         mmap_count += 1
-
-for off in range(lo, hi - 4, 4):
-    if get(off) == 0x92D3800A and get(off + 4) == 0xF2E0000A:
-        put(off, 0x9280000A); put(off + 4, 0xD35DFD4A)
+    elif w == 0x92D3800A and off + 4 < hi and get(off + 4) == 0xF2E0000A:
+        put(off, 0x9280000A)
+        put(off + 4, 0xD35DFD4A)
         mask_count += 1
-
-word_rewrites = {
-    0xD2C20009: 0xD2C00409, 0xD2C2000A: 0xD2C0040A,
-    0xF2C20008: 0xF2DFF408, 0xF2C20009: 0xF2DFF409,
-    0xD2C10009: 0xD2C00209, 0xD2C1000A: 0xD2C0020A,
-    0xF2C38008: 0xF2DFF708, 0xF2C38009: 0xF2DFF709,
-    0x92560A6C: 0x925D0A6C, 0x92560A6A: 0x925D0A6A,
-    0xD2C3000D: 0xD2C0060D, 0xD2C3000C: 0xD2C0060C,
-    0xD2C08008: 0xD2C00108,
-}
-tags_count = 0
-for off in range(lo, hi, 4):
-    w = get(off)
-    if w in word_rewrites:
+    elif w in word_rewrites:
         put(off, word_rewrites[w])
         tags_count += 1
 
@@ -102,4 +98,5 @@ bin_path.write_bytes(data)
 bin_path.chmod(0o755)
 flag_path.touch()
 
-print(f"Patches applied: UBFX={ubfx_count}, LSL={lsl_count}, MASK={mask_count}, MMAP={mmap_count}, TAGS={tags_count}")
+print(f"   \033[1;36mℹ\033[0m  \033[2mPatches applied: UBFX={ubfx_count}, LSL={lsl_count}, MASK={mask_count}, MMAP={mmap_count}, TAGS={tags_count}\033[0m")
+print("   \033[1;32m✓\033[0m  Native VA39 Binary Patch applied successfully.")

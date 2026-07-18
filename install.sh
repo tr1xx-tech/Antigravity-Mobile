@@ -114,8 +114,8 @@ if [[ "$EGL" == *"adreno"* ]] || [[ "$BOARD" == *"qcom"* ]] || [[ "$PLATFORM" ==
     GPU_PKG="mesa-vulkan-icd-freedreno"
     info "Detected Adreno GPU. Selecting freedreno drivers."
 elif [[ "$EGL" == *"mali"* ]] || [[ "$BOARD" == *"mtk"* ]] || [[ "$BOARD" == *"exynos"* ]] || [[ "$PLATFORM" == *"mtk"* ]]; then
-    GPU_PKG="mesa-vulkan-icd-panfrost"
-    info "Detected Mali/Exynos/MediaTek GPU. Selecting panfrost drivers."
+    GPU_PKG=""
+    info "Detected Mali/Exynos/MediaTek GPU. Using system driver pipeline."
 else
     info "Could not auto-detect GPU. Falling back to software rendering packages."
 fi
@@ -124,7 +124,7 @@ info "Installing core system packages..."
 pkg install -y proot-distro curl tar python x11-repo >/dev/null 2>&1 || true
 pkg update -y >/dev/null 2>&1 || true
 info "Installing GUI and hardware acceleration drivers..."
-pkg install -y termux-x11-nightly virglrenderer-android mesa-zink $GPU_PKG >/dev/null 2>&1 || true
+pkg install -y termux-x11-nightly virglrenderer-android $GPU_PKG >/dev/null 2>&1 || true
 
 MISSING_PKGS=()
 for cmd in proot-distro curl tar python3 termux-x11 virgl_test_server_android; do
@@ -171,12 +171,12 @@ info "Installing X11, GTK, graphics, and secure keyring dependencies..."
 apt-get install -y --no-install-recommends openbox curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2 libatk1.0-0 libcups2 libatk-bridge2.0-0 \
-    libgtk-3-0 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers \
+    libgtk-3-0 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri \
     dbus-x11 gnome-keyring libsecret-1-0 >/dev/null 2>&1 || \
 apt-get install -y --no-install-recommends openbox curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libatk1.0-0t64 libcups2t64 libatk-bridge2.0-0t64 \
-    libgtk-3-0t64 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers \
+    libgtk-3-0t64 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri \
     dbus-x11 gnome-keyring libsecret-1-0 >/dev/null 2>&1 || true
 
 mkdir -p /opt/antigravity
@@ -245,7 +245,7 @@ export GNOME_KEYRING_PID
 # Hardware Acceleration Flags
 export GALLIUM_DRIVER=virpipe
 export MESA_GL_VERSION_OVERRIDE=4.0
-GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=egl"
+GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=egl --enable-webgl --enable-accelerated-2d-canvas --num-raster-threads=4"
 
 DEBUG_MODE=0
 ARGS=()
@@ -342,7 +342,17 @@ else:
     sec_lo, sec_hi = find_section(".text")
     if sec_lo is not None: lo, hi = sec_lo, sec_hi
 
-ubfx_count = lsl_count = mask_count = mmap_count = 0
+word_rewrites = {
+    0xD2C20009: 0xD2C00409, 0xD2C2000A: 0xD2C0040A,
+    0xF2C20008: 0xF2DFF408, 0xF2C20009: 0xF2DFF409,
+    0xD2C10009: 0xD2C00209, 0xD2C1000A: 0xD2C0020A,
+    0xF2C38008: 0xF2DFF708, 0xF2C38009: 0xF2DFF709,
+    0x92560A6C: 0x925D0A6C, 0x92560A6A: 0x925D0A6A,
+    0xD2C3000D: 0xD2C0060D, 0xD2C3000C: 0xD2C0060C,
+    0xD2C08008: 0xD2C00108,
+}
+
+ubfx_count = lsl_count = mask_count = mmap_count = tags_count = 0
 for off in range(lo, hi, 4):
     w = get(off)
     if (w & 0x7F800000) == 0x53000000:
@@ -357,25 +367,11 @@ for off in range(lo, hi, 4):
     elif w == 0xF2E00029:
         put(off, 0xD3596129)
         mmap_count += 1
-
-for off in range(lo, hi - 4, 4):
-    if get(off) == 0x92D3800A and get(off + 4) == 0xF2E0000A:
-        put(off, 0x9280000A); put(off + 4, 0xD35DFD4A)
+    elif w == 0x92D3800A and off + 4 < hi and get(off + 4) == 0xF2E0000A:
+        put(off, 0x9280000A)
+        put(off + 4, 0xD35DFD4A)
         mask_count += 1
-
-word_rewrites = {
-    0xD2C20009: 0xD2C00409, 0xD2C2000A: 0xD2C0040A,
-    0xF2C20008: 0xF2DFF408, 0xF2C20009: 0xF2DFF409,
-    0xD2C10009: 0xD2C00209, 0xD2C1000A: 0xD2C0020A,
-    0xF2C38008: 0xF2DFF708, 0xF2C38009: 0xF2DFF709,
-    0x92560A6C: 0x925D0A6C, 0x92560A6A: 0x925D0A6A,
-    0xD2C3000D: 0xD2C0060D, 0xD2C3000C: 0xD2C0060C,
-    0xD2C08008: 0xD2C00108,
-}
-tags_count = 0
-for off in range(lo, hi, 4):
-    w = get(off)
-    if w in word_rewrites:
+    elif w in word_rewrites:
         put(off, word_rewrites[w])
         tags_count += 1
 
