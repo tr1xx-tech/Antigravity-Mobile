@@ -101,17 +101,7 @@ fi
 step "Initializing Host Environment (Termux System)"
 pkg update -y >/dev/null 2>&1 || true
 
-# Verify Termux-X11 App is installed interactively without launching it
-echo -e "\n${CYAN_BOLD}  [ Termux-X11 Dependency Check ]${RESET}"
-echo -e "   ${CYAN}ℹ${RESET}  You must have the Termux-X11 Android APK installed to view the GUI."
-echo -e "   ${CYAN}ℹ${RESET}  If you don't have it, press 'N' to open the download page."
-echo -e "   ${CYAN}ℹ${RESET}  If it is already installed, press Enter to continue."
-read -r -p "      Continue? [Y/n]: " check_x11 </dev/tty || true
-if [[ "$check_x11" =~ ^[Nn]$ ]]; then
-    termux-open "https://github.com/termux/termux-x11/releases"
-    echo -e "\n${RED_BOLD}Aborted.${RESET} Please install the APK and run this script again."
-    exit 1
-fi
+
 
 # Auto-detect GPU for minimal package installation
 EGL=$(getprop ro.hardware.egl 2>/dev/null | tr '[:upper:]' '[:lower:]')
@@ -434,7 +424,13 @@ for arg in "$@"; do [ "$arg" == "--debug" ] && DEBUG_MODE=1; done
 if ! pgrep -f "termux-x11" > /dev/null 2>&1; then termux-x11 :0 >/dev/null 2>&1 & sleep 1; fi
 
 if [ "$DEBUG_MODE" -eq 0 ]; then
-    ( sleep 0.5; am start -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1 || true ) &
+    if ! am start -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1; then
+        echo -e "\n\033[1;31m✗ Error: Termux-X11 Android App is not installed!\033[0m"
+        echo -e "\033[1;34mℹ\033[0m You need the Termux-X11 app to view the GUI."
+        echo -e "\033[1;34mℹ\033[0m Opening the GitHub download page..."
+        termux-open "https://github.com/termux/termux-x11/releases"
+        exit 1
+    fi
 fi
 
 PROOT_ARGS=(
