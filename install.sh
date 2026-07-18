@@ -279,8 +279,8 @@ if not bin_path.exists():
 # Check if already patched by looking at our mmap signature
 try:
     data = bytearray(bin_path.read_bytes())
-    if data.count(struct.pack("<I", 0xD3596129)) > 0 and data.count(struct.pack("<I", 0xF2E00029)) == 0:
-        print("Language server is already patched.")
+    if data.count(struct.pack("<I", 0xD2C00409)) > 0 and data.count(struct.pack("<I", 0xD2C20009)) == 0:
+        print("VA39 binary patch already applied.")
         flag_path.touch()
         exit(0)
 except Exception as e:
