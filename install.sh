@@ -171,12 +171,12 @@ info "Installing X11, GTK, graphics, and secure keyring dependencies..."
 apt-get install -y --no-install-recommends openbox curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2 libatk1.0-0 libcups2 libatk-bridge2.0-0 \
-    libgtk-3-0 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri \
+    libgtk-3-0 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers \
     dbus-x11 gnome-keyring libsecret-1-0 >/dev/null 2>&1 || \
 apt-get install -y --no-install-recommends openbox curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libatk1.0-0t64 libcups2t64 libatk-bridge2.0-0t64 \
-    libgtk-3-0t64 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri \
+    libgtk-3-0t64 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers \
     dbus-x11 gnome-keyring libsecret-1-0 >/dev/null 2>&1 || true
 
 mkdir -p /opt/antigravity
@@ -262,7 +262,7 @@ export GNOME_KEYRING_PID
 # Hardware Acceleration Flags
 export GALLIUM_DRIVER=virpipe
 export MESA_GL_VERSION_OVERRIDE=4.0
-GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=egl --enable-webgl --enable-accelerated-2d-canvas --num-raster-threads=4 --start-maximized"
+GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --enable-features=Vulkan --start-maximized"
 
 SOFTWARE_MODE=0
 DEBUG_MODE=0
