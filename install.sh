@@ -121,11 +121,12 @@ fi
 
 info "Installing core system packages..."
 pkg install -y proot-distro curl tar python x11-repo >/dev/null 2>&1 || true
+pkg update -y >/dev/null 2>&1 || true
 info "Installing GUI and hardware acceleration drivers..."
 pkg install -y termux-x11-nightly virglrenderer-android mesa-zink $GPU_PKG >/dev/null 2>&1 || true
 
 MISSING_PKGS=()
-for cmd in proot-distro curl tar python3 termux-x11 virgl_test_server; do
+for cmd in proot-distro curl tar python3 termux-x11 virgl_test_server_android; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
         MISSING_PKGS+=("$cmd")
     fi
