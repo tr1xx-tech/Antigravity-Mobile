@@ -92,6 +92,7 @@ trap on_host_interrupt SIGINT SIGTERM
 
 clear || true
 draw_banner "$INSTALLER_VERSION"
+echo -e "  \033[1;30m💡 Tip: Press \033[1;31mCtrl+C\033[1;30m in this terminal to abort gracefully.\033[0m\n"
 
 if [ -z "$PREFIX" ] || [ ! -d "/data/data/com.termux/files/usr" ]; then
     error "Must be executed within Termux."
