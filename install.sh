@@ -58,8 +58,7 @@ error()   { wrap_log 6 "   ${RED_BOLD}✗  Error: ${RESET}${RED_BOLD}" "      ${
 draw_banner() {
     local ver="$1"
     local term_w=$(get_cols)
-    local max_w=50
-    if [ "$term_w" -lt 54 ]; then max_w=$((term_w - 4)); fi
+    local max_w=$(( term_w - 4 ))
     if [ "$max_w" -lt 38 ]; then max_w=38; fi
 
     local hline=""
@@ -286,8 +285,7 @@ get_cols() {
 draw_banner() {
     local ver="$1"
     local term_w=$(get_cols)
-    local max_w=50
-    if [ "$term_w" -lt 54 ]; then max_w=$((term_w - 4)); fi
+    local max_w=$(( term_w - 4 ))
     if [ "$max_w" -lt 38 ]; then max_w=38; fi
 
     local hline=""
