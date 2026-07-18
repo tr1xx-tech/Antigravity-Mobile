@@ -102,14 +102,15 @@ fi
 step "Initializing Host Environment (Termux System)"
 pkg update -y >/dev/null 2>&1 || true
 
-# Verify Termux-X11 App is installed
-if am start -n com.termux.x11/com.termux.x11.MainActivity 2>&1 | grep -q "Error"; then
-    echo -e "\n${RED_BOLD}Warning: Termux-X11 Android App is not installed!${RESET}"
-    echo -e "You need the Termux-X11 app to render the GUI."
-    echo -e "Press Enter to open the Termux-X11 GitHub releases page..."
-    read -r
+# Verify Termux-X11 App is installed interactively without launching it
+echo -e "\n${CYAN_BOLD}  [ Termux-X11 Dependency Check ]${RESET}"
+echo -e "   ${CYAN}ℹ${RESET}  You must have the Termux-X11 Android APK installed to view the GUI."
+echo -e "   ${CYAN}ℹ${RESET}  If you don't have it, press 'N' to open the download page."
+echo -e "   ${CYAN}ℹ${RESET}  If it is already installed, press Enter to continue."
+read -p "      Continue? [Y/n]: " check_x11
+if [[ "$check_x11" =~ ^[Nn]$ ]]; then
     termux-open "https://github.com/termux/termux-x11/releases"
-    echo -e "Please install the APK and run this script again."
+    echo -e "\n${RED_BOLD}Aborted.${RESET} Please install the APK and run this script again."
     exit 1
 fi
 
