@@ -19,10 +19,69 @@ GRAY='\033[38;5;242m'
 WHITE='\033[1;37m'
 RESET='\033[0m'
 
-step()    { echo -e "\n${PURPLE_BOLD}◆  $1${RESET}"; }
-info()    { echo -e "   ${CYAN}ℹ${RESET}  $1"; }
-success() { echo -e "   ${GREEN_BOLD}✓${RESET}  $1"; }
-error()   { echo -e "   ${RED_BOLD}✗  Error: $1${RESET}"; }
+DIM='\033[2m'
+
+get_cols() {
+    local c=""
+    if [ -r /dev/tty ]; then c=$(stty size </dev/tty 2>/dev/null | awk '{print $2}' || true); fi
+    if [ -z "$c" ]; then c=$(tput cols </dev/tty 2>/dev/null || true); fi
+    if [ -z "$c" ] || ! [[ "$c" =~ ^[0-9]+$ ]] || [ "$c" -lt 25 ]; then c="${TERM_WIDTH:-${COLUMNS:-50}}"; fi
+    if ! [[ "$c" =~ ^[0-9]+$ ]] || [ "$c" -lt 25 ]; then c=50; fi
+    echo "$c"
+}
+
+wrap_log() {
+    local prefix_vis_len="$1"; local prefix_str="$2"; local indent_str="$3"; local indent_vis_len="$4"; local text="$5"
+    local cols=$(get_cols)
+    local max_first=$(( cols - prefix_vis_len - 1 )); local max_cont=$(( cols - indent_vis_len - 1 ))
+    if [ $max_first -lt 15 ]; then max_first=15; fi; if [ $max_cont -lt 15 ]; then max_cont=15; fi
+    local words=($text); local line=""; local is_first=1
+    for word in "${words[@]}"; do
+        if [ ${#line} -eq 0 ]; then line="$word"; else
+            local cur_limit=$max_first; if [ $is_first -eq 0 ]; then cur_limit=$max_cont; fi
+            if [ $(( ${#line} + 1 + ${#word} )) -le $cur_limit ]; then line="$line $word"; else
+                if [ $is_first -eq 1 ]; then echo -e "${prefix_str}${line}${RESET}"; is_first=0; else echo -e "${indent_str}${line}${RESET}"; fi
+                line="$word"
+            fi
+        fi
+    done
+    if [ ${#line} -gt 0 ]; then
+        if [ $is_first -eq 1 ]; then echo -e "${prefix_str}${line}${RESET}"; else echo -e "${indent_str}${line}${RESET}"; fi
+    fi
+}
+
+step()    { echo -e ""; wrap_log 3 "◆  ${PURPLE_BOLD}" "   ${PURPLE_BOLD}└─ ${RESET}${PURPLE_BOLD}" 6 "$1"; }
+info()    { wrap_log 6 "   ${CYAN}ℹ${RESET}  ${DIM}" "      ${DIM}└─ ${RESET}${DIM}" 9 "$1"; }
+success() { wrap_log 6 "   ${GREEN_BOLD}✓${RESET}  ${WHITE}" "      ${DIM}└─ ${RESET}${WHITE}" 9 "$1"; }
+error()   { wrap_log 6 "   ${RED_BOLD}✗  Error: ${RESET}${RED_BOLD}" "      ${DIM}└─ ${RESET}${RED_BOLD}" 9 "$1"; }
+
+draw_banner() {
+    local ver="$1"
+    local term_w=$(get_cols)
+    local max_w=50
+    if [ "$term_w" -lt 54 ]; then max_w=$((term_w - 4)); fi
+    if [ "$max_w" -lt 38 ]; then max_w=38; fi
+
+    local hline=""
+    for ((i=0; i<max_w; i++)); do hline="${hline}─"; done
+
+    pad_text() {
+        local text="$1"; local vis_len="$2"
+        local pad_len=$(( max_w - vis_len - 2 ))
+        if [ "$pad_len" -lt 0 ]; then pad_len=0; fi
+        local pad_str=""
+        for ((i=0; i<pad_len; i++)); do pad_str="${pad_str} "; done
+        echo -n "${text}${pad_str}"
+    }
+
+    echo -e "\n${CYAN_BOLD}  ┌${hline}┐${RESET}"
+    echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}ANTIGRAVITY 2.0  ${RESET}${PURPLE_BOLD}MOBILE GUI" 29) ${CYAN_BOLD}│${RESET}"
+    echo -e "${CYAN_BOLD}  ├${hline}┤${RESET}"
+    echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Version        : ${RESET}${GREEN_BOLD}v${ver}" $(( 18 + ${#ver} ))) ${CYAN_BOLD}│${RESET}"
+    echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Target OS      : ${RESET}${WHITE}Android Termux X11" 35) ${CYAN_BOLD}│${RESET}"
+    echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Architecture   : ${RESET}${WHITE}Debian PRoot Openbox" 37) ${CYAN_BOLD}│${RESET}"
+    echo -e "${CYAN_BOLD}  └${hline}┘${RESET}\n"
+}
 
 on_host_interrupt() {
     trap - SIGINT SIGTERM; kill -TERM 0 2>/dev/null || true
@@ -33,13 +92,7 @@ on_host_interrupt() {
 trap on_host_interrupt SIGINT SIGTERM
 
 clear || true
-echo -e "\n${CYAN_BOLD}  ┌──────────────────────────────────────────────────┐${RESET}"
-echo -e "${CYAN_BOLD}  │ ${GRAY}ANTIGRAVITY 2.0  ${RESET}${PURPLE_BOLD}MOBILE GUI                      ${CYAN_BOLD}│${RESET}"
-echo -e "${CYAN_BOLD}  ├──────────────────────────────────────────────────┤${RESET}"
-echo -e "${CYAN_BOLD}  │ ${GRAY}Version        : ${RESET}${GREEN_BOLD}v${INSTALLER_VERSION}                      ${CYAN_BOLD}│${RESET}"
-echo -e "${CYAN_BOLD}  │ ${GRAY}Target OS      : ${RESET}${WHITE}Android Termux X11              ${CYAN_BOLD}│${RESET}"
-echo -e "${CYAN_BOLD}  │ ${GRAY}Architecture   : ${RESET}${WHITE}Debian PRoot Openbox            ${CYAN_BOLD}│${RESET}"
-echo -e "${CYAN_BOLD}  └──────────────────────────────────────────────────┘${RESET}\n"
+draw_banner "$INSTALLER_VERSION"
 
 if [ -z "$PREFIX" ] || [ ! -d "/data/data/com.termux/files/usr" ]; then
     error "Must be executed within Termux."
@@ -220,11 +273,44 @@ rm -f "$FIFO"; mkfifo "$FIFO"
 ( while [ -p "$FIFO" ]; do if read -r url < "$FIFO"; then termux-open "$url"; fi; done ) &
 FIFO_PID=$!
 
-echo -e "\n\033[1;38;5;39m  ┌──────────────────────────────────────────────────┐\033[0m"
-echo -e "\033[1;38;5;39m  │ \033[38;5;242mANTIGRAVITY 2.0  \033[0m\033[1;38;5;141mMOBILE GUI                      \033[1;38;5;39m│\033[0m"
-echo -e "\033[1;38;5;39m  ├──────────────────────────────────────────────────┤\033[0m"
-echo -e "\033[1;38;5;39m  │ \033[38;5;242mVersion        : \033[0m\033[1;38;5;48mv1.0.0                        \033[1;38;5;39m│\033[0m"
-echo -e "\033[1;38;5;39m  └──────────────────────────────────────────────────┘\033[0m"
+get_cols() {
+    local c=""
+    if [ -r /dev/tty ]; then c=$(stty size </dev/tty 2>/dev/null | awk '{print $2}' || true); fi
+    if [ -z "$c" ]; then c=$(tput cols </dev/tty 2>/dev/null || true); fi
+    if [ -z "$c" ] || ! [[ "$c" =~ ^[0-9]+$ ]] || [ "$c" -lt 25 ]; then c="${TERM_WIDTH:-${COLUMNS:-50}}"; fi
+    if ! [[ "$c" =~ ^[0-9]+$ ]] || [ "$c" -lt 25 ]; then c=50; fi
+    echo "$c"
+}
+
+draw_banner() {
+    local ver="$1"
+    local term_w=$(get_cols)
+    local max_w=50
+    if [ "$term_w" -lt 54 ]; then max_w=$((term_w - 4)); fi
+    if [ "$max_w" -lt 38 ]; then max_w=38; fi
+
+    local hline=""
+    for ((i=0; i<max_w; i++)); do hline="${hline}─"; done
+
+    pad_text() {
+        local text="$1"; local vis_len="$2"
+        local pad_len=$(( max_w - vis_len - 2 ))
+        if [ "$pad_len" -lt 0 ]; then pad_len=0; fi
+        local pad_str=""
+        for ((i=0; i<pad_len; i++)); do pad_str="${pad_str} "; done
+        echo -n "${text}${pad_str}"
+    }
+
+    echo -e "\n\033[1;38;5;39m  ┌${hline}┐\033[0m"
+    echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mANTIGRAVITY 2.0  \033[0m\033[1;38;5;141mMOBILE GUI" 29) \033[1;38;5;39m│\033[0m"
+    echo -e "\033[1;38;5;39m  ├${hline}┤\033[0m"
+    echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mVersion        : \033[0m\033[1;38;5;48mv${ver}" $(( 18 + ${#ver} ))) \033[1;38;5;39m│\033[0m"
+    echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mTarget OS      : \033[0m\033[1;37mAndroid Termux X11" 35) \033[1;38;5;39m│\033[0m"
+    echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mArchitecture   : \033[0m\033[1;37mDebian PRoot Openbox" 37) \033[1;38;5;39m│\033[0m"
+    echo -e "\033[1;38;5;39m  └${hline}┘\033[0m"
+}
+
+draw_banner "1.0.0"
 echo -e "  \033[1;30m💡 Tip: Press \033[1;31mCtrl+C\033[1;30m in this terminal to exit gracefully.\033[0m\n"
 
 # Auto-Patching mechanism for Updates
