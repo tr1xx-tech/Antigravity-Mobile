@@ -206,6 +206,7 @@ cat << 'EOF_RC' > /root/.config/openbox/rc.xml
     <application class="*">
       <decor>no</decor>
       <maximized>yes</maximized>
+      <fullscreen>yes</fullscreen>
     </application>
   </applications>
 </openbox_config>
@@ -226,6 +227,7 @@ chmod +x /usr/local/bin/xdg-open
 cat << 'EOF_RUN' > /opt/antigravity/run.sh
 #!/bin/bash
 export DISPLAY=:0
+export ELECTRON_OZONE_PLATFORM_HINT=x11
 export XDG_RUNTIME_DIR=/tmp/runtime-root
 mkdir -p "$XDG_RUNTIME_DIR" 2>/dev/null || true
 
@@ -245,7 +247,7 @@ export GNOME_KEYRING_PID
 # Hardware Acceleration Flags
 export GALLIUM_DRIVER=virpipe
 export MESA_GL_VERSION_OVERRIDE=4.0
-GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=egl --enable-webgl --enable-accelerated-2d-canvas --num-raster-threads=4"
+GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=egl --enable-webgl --enable-accelerated-2d-canvas --num-raster-threads=4 --start-maximized"
 
 DEBUG_MODE=0
 ARGS=()
