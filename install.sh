@@ -244,7 +244,7 @@ export GNOME_KEYRING_PID
 # Hardware Acceleration Flags
 export GALLIUM_DRIVER=virpipe
 export MESA_GL_VERSION_OVERRIDE=4.0
-GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=egl --enable-webgl --enable-accelerated-2d-canvas --num-raster-threads=4"
+GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=egl --enable-webgl --enable-accelerated-2d-canvas --num-raster-threads=4 --disable-gpu-compositing"
 
 DEBUG_MODE=0
 ARGS=()
@@ -257,7 +257,7 @@ for arg in "$@"; do
 done
 
 if ! pgrep -x "ratpoison" > /dev/null 2>&1; then
-    echo "startup_message off" > /tmp/ratpoisonrc
+    echo "set startupmessage off" > /tmp/ratpoisonrc
     ratpoison -f /tmp/ratpoisonrc &
     sleep 0.2
 fi
