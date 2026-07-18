@@ -281,7 +281,7 @@ if not bin_path.exists():
 try:
     data = bytearray(bin_path.read_bytes())
     if data.count(struct.pack("<I", 0xD2C00409)) > 0 and data.count(struct.pack("<I", 0xD2C20009)) == 0:
-        print("   \033[1;36mℹ\033[0m  \033[2mVA39 binary patch already applied.\033[0m")
+        print("   \033[1;32m✓\033[0m  VA39 binary patch already applied.")
         flag_path.touch()
         exit(0)
 except Exception as e:
@@ -369,9 +369,9 @@ bin_path.chmod(0o755)
 flag_path.touch()
 
 print(f"   \033[1;36mℹ\033[0m  \033[2mPatches applied: UBFX={ubfx_count}, LSL={lsl_count}, MASK={mask_count}, MMAP={mmap_count}, TAGS={tags_count}\033[0m")
+print("   \033[1;32m✓\033[0m  Native VA39 Binary Patch applied successfully.")
 EOF_PATCHER
 python3 "$PATCHER"
-success "Native VA39 Binary Patch applied successfully."
 
 step "Deploying Command-Line Launcher ('gem')"
 GEM_LAUNCHER="$PREFIX/bin/gem"
