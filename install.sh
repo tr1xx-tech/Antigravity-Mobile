@@ -119,15 +119,26 @@ else
     info "Could not auto-detect GPU. Falling back to software rendering packages."
 fi
 
-pkg install -y proot-distro curl tar python x11-repo termux-x11-nightly virglrenderer-android mesa-zink $GPU_PKG >/dev/null 2>&1 || true
-success "Host utilities and dynamic GPU drivers verified."
+info "Installing core system packages..."
+pkg install -y proot-distro curl tar python x11-repo >/dev/null 2>&1 || true
+info "Installing GUI and hardware acceleration drivers..."
+pkg install -y termux-x11-nightly virglrenderer-android mesa-zink $GPU_PKG >/dev/null 2>&1 || true
 
-step "Verifying Debian Subsystem (PRoot Container)"
-if ! command -v proot-distro >/dev/null; then
-    error "proot-distro is not installed. Package installation might have failed."
+MISSING_PKGS=()
+for cmd in proot-distro curl tar python3 termux-x11 virgl_test_server; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        MISSING_PKGS+=("$cmd")
+    fi
+done
+
+if [ ${#MISSING_PKGS[@]} -ne 0 ]; then
+    error "Failed to install required host packages: ${MISSING_PKGS[*]}"
+    echo -e "   ${CYAN}ℹ${RESET}  ${DIM}└─ ${RESET}Please run 'pkg update -y' manually and check for Termux repository errors."
     exit 1
 fi
+success "Host utilities and dynamic GPU drivers successfully installed."
 
+step "Verifying Debian Subsystem (PRoot Container)"
 if ! proot-distro login debian -- true </dev/null >/dev/null 2>&1; then
     if ! proot-distro install debian </dev/null >/dev/null 2>&1; then
         error "Failed to provision Debian container. Check your connection."
