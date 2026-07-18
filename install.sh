@@ -281,14 +281,14 @@ if not bin_path.exists():
 try:
     data = bytearray(bin_path.read_bytes())
     if data.count(struct.pack("<I", 0xD2C00409)) > 0 and data.count(struct.pack("<I", 0xD2C20009)) == 0:
-        print("VA39 binary patch already applied.")
+        print("   \033[1;36mℹ\033[0m  \033[2mVA39 binary patch already applied.\033[0m")
         flag_path.touch()
         exit(0)
 except Exception as e:
     print(f"Error reading {bin_path}: {e}")
     exit(1)
 
-print("Unpatched binary detected. Applying VA39 patch...")
+print("   \033[1;36mℹ\033[0m  \033[2mUnpatched binary detected. Applying VA39 patch...\033[0m")
 
 # Create backup of the unpatched binary if it doesn't exist
 if not bak_path.exists():
@@ -368,7 +368,7 @@ bin_path.write_bytes(data)
 bin_path.chmod(0o755)
 flag_path.touch()
 
-print(f"Patches applied: UBFX={ubfx_count}, LSL={lsl_count}, MASK={mask_count}, MMAP={mmap_count}, TAGS={tags_count}")
+print(f"   \033[1;36mℹ\033[0m  \033[2mPatches applied: UBFX={ubfx_count}, LSL={lsl_count}, MASK={mask_count}, MMAP={mmap_count}, TAGS={tags_count}\033[0m")
 EOF_PATCHER
 python3 "$PATCHER"
 success "Native VA39 Binary Patch applied successfully."
