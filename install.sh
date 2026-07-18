@@ -227,6 +227,8 @@ export XDG_RUNTIME_DIR=/tmp/runtime-root
 mkdir -p "$XDG_RUNTIME_DIR" 2>/dev/null || true
 
 # Hardware Acceleration Flags
+export GALLIUM_DRIVER=virpipe
+export MESA_GL_VERSION_OVERRIDE=4.0
 GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --enable-features=Vulkan"
 
 DEBUG_MODE=0
@@ -453,6 +455,7 @@ fi
 DEBUG_MODE=0
 for arg in "$@"; do [ "$arg" == "--debug" ] && DEBUG_MODE=1; done
 
+if ! pgrep -f "virgl_test_server_android" > /dev/null 2>&1; then virgl_test_server_android >/dev/null 2>&1 & fi
 if ! pgrep -f "termux-x11" > /dev/null 2>&1; then termux-x11 :0 >/dev/null 2>&1 & sleep 1; fi
 
 if [ "$DEBUG_MODE" -eq 0 ]; then
