@@ -85,14 +85,13 @@ draw_banner() {
 on_host_interrupt() {
     trap - SIGINT SIGTERM; kill -TERM 0 2>/dev/null || true
     rm -f "$PREFIX/tmp/setup_antigravity.sh" /tmp/antigravity.tar.gz 2>/dev/null || true
-    echo -e "\n${RED_BOLD}Aborted by user.${RESET}\n"
+    echo -e "\n\033[1;32m[Antigravity Installer] \033[0mGracefully terminated.\n"
     exit 130
 }
 trap on_host_interrupt SIGINT SIGTERM
 
 clear || true
 draw_banner "$INSTALLER_VERSION"
-echo -e "  \033[1;30m💡 Tip: Press \033[1;31mCtrl+C\033[1;30m in this terminal to abort gracefully.\033[0m\n"
 
 if [ -z "$PREFIX" ] || [ ! -d "/data/data/com.termux/files/usr" ]; then
     error "Must be executed within Termux."
@@ -490,4 +489,23 @@ EOF_TERMUX
 chmod +x "$GEM_LAUNCHER"
 if command -v termux-fix-shebang >/dev/null 2>&1; then termux-fix-shebang "$GEM_LAUNCHER"; fi
 
-success "Installation and Optimization Complete. Run 'gem' to start."
+    local term_w=$(get_cols)
+    local max_w=$((term_w - 4))
+    if [ "$max_w" -lt 38 ]; then max_w=38; fi
+    local hline=""
+    for ((i=0; i<max_w; i++)); do hline="${hline}─"; done
+
+    pad_text() {
+        local text="$1"; local vis_len="$2"
+        local pad_len=$(( max_w - vis_len - 2 ))
+        if [ "$pad_len" -lt 0 ]; then pad_len=0; fi
+        local pad_str=""
+        for ((i=0; i<pad_len; i++)); do pad_str="${pad_str} "; done
+        echo -n "${text}${pad_str}"
+    }
+
+    echo -e "\n${CYAN_BOLD}  ┌${hline}┐${RESET}"
+    echo -e "${CYAN_BOLD}  │ $(pad_text "${GREEN_BOLD}✨ INSTALLATION COMPLETE!✨" 27) ${CYAN_BOLD}│${RESET}"
+    echo -e "${CYAN_BOLD}  ├${hline}┤${RESET}"
+    echo -e "${CYAN_BOLD}  │ $(pad_text "${WHITE}Run '${PURPLE_BOLD}gem${WHITE}' to start the IDE!" 29) ${CYAN_BOLD}│${RESET}"
+    echo -e "${CYAN_BOLD}  └${hline}┘${RESET}\n"
