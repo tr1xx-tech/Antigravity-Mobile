@@ -83,15 +83,17 @@ draw_banner() {
 }
 
 on_host_interrupt() {
-    trap - SIGINT SIGTERM; kill -TERM 0 2>/dev/null || true
+    trap - SIGINT SIGTERM
+    echo -e "\n\n${RED_BOLD}✗  Installation aborted by user.${RESET}\n"
     rm -f "$PREFIX/tmp/setup_antigravity.sh" /tmp/antigravity.tar.gz 2>/dev/null || true
-    echo -e "\n\033[1;32m[Antigravity Installer] \033[0mGracefully terminated.\n"
+    kill -TERM 0 2>/dev/null || true
     exit 130
 }
 trap on_host_interrupt SIGINT SIGTERM
 
 clear || true
 draw_banner "$INSTALLER_VERSION"
+echo -e "  ${DIM}💡 Tip: Press ${RESET}${RED_BOLD}Ctrl+C${RESET}${DIM} to gracefully abort installation.${RESET}\n"
 
 if [ -z "$PREFIX" ] || [ ! -d "/data/data/com.termux/files/usr" ]; then
     error "Must be executed within Termux."
