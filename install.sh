@@ -74,7 +74,7 @@ draw_banner() {
     }
 
     echo -e "\n${CYAN_BOLD}  ┌${hline}┐${RESET}"
-    echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}ANTIGRAVITY 2.0  ${RESET}${PURPLE_BOLD}MOBILE GUI" 29) ${CYAN_BOLD}│${RESET}"
+    echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}ANTIGRAVITY 2.0  ${RESET}${PURPLE_BOLD}MOBILE GUI" 27) ${CYAN_BOLD}│${RESET}"
     echo -e "${CYAN_BOLD}  ├${hline}┤${RESET}"
     echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Version        : ${RESET}${GREEN_BOLD}v${ver}" $(( 18 + ${#ver} ))) ${CYAN_BOLD}│${RESET}"
     echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Target OS      : ${RESET}${WHITE}Android Termux X11" 35) ${CYAN_BOLD}│${RESET}"
@@ -301,7 +301,7 @@ draw_banner() {
     }
 
     echo -e "\n\033[1;38;5;39m  ┌${hline}┐\033[0m"
-    echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mANTIGRAVITY 2.0  \033[0m\033[1;38;5;141mMOBILE GUI" 29) \033[1;38;5;39m│\033[0m"
+    echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mANTIGRAVITY 2.0  \033[0m\033[1;38;5;141mMOBILE GUI" 27) \033[1;38;5;39m│\033[0m"
     echo -e "\033[1;38;5;39m  ├${hline}┤\033[0m"
     echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mVersion        : \033[0m\033[1;38;5;48mv${ver}" $(( 18 + ${#ver} ))) \033[1;38;5;39m│\033[0m"
     echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mTarget OS      : \033[0m\033[1;37mAndroid Termux X11" 35) \033[1;38;5;39m│\033[0m"
