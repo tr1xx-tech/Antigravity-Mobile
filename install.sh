@@ -167,15 +167,17 @@ info() {
 info "Updating Debian package lists..."
 apt-get update -y >/dev/null 2>&1
 
-info "Installing X11, GTK, and graphics dependencies..."
+info "Installing X11, GTK, graphics, and secure keyring dependencies..."
 apt-get install -y --no-install-recommends openbox curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2 libatk1.0-0 libcups2 libatk-bridge2.0-0 \
-    libgtk-3-0 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers >/dev/null 2>&1 || \
+    libgtk-3-0 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers \
+    dbus-x11 gnome-keyring libsecret-1-0 >/dev/null 2>&1 || \
 apt-get install -y --no-install-recommends openbox curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libatk1.0-0t64 libcups2t64 libatk-bridge2.0-0t64 \
-    libgtk-3-0t64 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers >/dev/null 2>&1 || true
+    libgtk-3-0t64 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers \
+    dbus-x11 gnome-keyring libsecret-1-0 >/dev/null 2>&1 || true
 
 mkdir -p /opt/antigravity
 if [ ! -x "/opt/antigravity/antigravity" ]; then
@@ -227,10 +229,23 @@ export DISPLAY=:0
 export XDG_RUNTIME_DIR=/tmp/runtime-root
 mkdir -p "$XDG_RUNTIME_DIR" 2>/dev/null || true
 
+# Start D-Bus session if not running
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+    eval $(dbus-launch --sh-syntax)
+    export DBUS_SESSION_BUS_ADDRESS
+fi
+
+# Initialize gnome-keyring-daemon
+mkdir -p ~/.local/share/keyrings
+echo -n "" | gnome-keyring-daemon --unlock --components=secrets >/dev/null 2>&1 || true
+eval $(gnome-keyring-daemon --start --components=secrets)
+export GNOME_KEYRING_CONTROL
+export GNOME_KEYRING_PID
+
 # Hardware Acceleration Flags
 export GALLIUM_DRIVER=virpipe
 export MESA_GL_VERSION_OVERRIDE=4.0
-GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --enable-features=Vulkan"
+GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=egl"
 
 DEBUG_MODE=0
 ARGS=()
