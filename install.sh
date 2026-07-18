@@ -123,8 +123,16 @@ pkg install -y proot-distro curl tar python x11-repo termux-x11-nightly virglren
 success "Host utilities and dynamic GPU drivers verified."
 
 step "Verifying Debian Subsystem (PRoot Container)"
+if ! command -v proot-distro >/dev/null; then
+    error "proot-distro is not installed. Package installation might have failed."
+    exit 1
+fi
+
 if ! proot-distro login debian -- true </dev/null >/dev/null 2>&1; then
-    proot-distro install debian </dev/null >/dev/null 2>&1
+    if ! proot-distro install debian </dev/null >/dev/null 2>&1; then
+        error "Failed to provision Debian container. Check your connection."
+        exit 1
+    fi
     success "Debian container provisioned successfully."
 else
     success "Debian container is already provisioned."
