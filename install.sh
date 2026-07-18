@@ -78,7 +78,7 @@ draw_banner() {
     echo -e "${CYAN_BOLD}  ├${hline}┤${RESET}"
     echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Version        : ${RESET}${GREEN_BOLD}v${ver}" $(( 18 + ${#ver} ))) ${CYAN_BOLD}│${RESET}"
     echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Target OS      : ${RESET}${WHITE}Android Termux X11" 35) ${CYAN_BOLD}│${RESET}"
-    echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Architecture   : ${RESET}${WHITE}Debian PRoot Openbox" 37) ${CYAN_BOLD}│${RESET}"
+    echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Architecture   : ${RESET}${WHITE}Debian PRoot Matchbox" 38) ${CYAN_BOLD}│${RESET}"
     echo -e "${CYAN_BOLD}  └${hline}┘${RESET}"
 }
 
@@ -168,12 +168,12 @@ info "Updating Debian package lists..."
 apt-get update -y >/dev/null 2>&1
 
 info "Installing X11, GTK, graphics, and secure keyring dependencies..."
-apt-get install -y --no-install-recommends openbox curl wget ca-certificates tar \
+apt-get install -y --no-install-recommends matchbox-window-manager curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2 libatk1.0-0 libcups2 libatk-bridge2.0-0 \
     libgtk-3-0 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri \
     dbus-x11 gnome-keyring libsecret-1-0 >/dev/null 2>&1 || \
-apt-get install -y --no-install-recommends openbox curl wget ca-certificates tar \
+apt-get install -y --no-install-recommends matchbox-window-manager curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libatk1.0-0t64 libcups2t64 libatk-bridge2.0-0t64 \
     libgtk-3-0t64 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri \
@@ -195,22 +195,6 @@ if [ ! -x "/opt/antigravity/antigravity" ]; then
     [ -f "/opt/antigravity/Antigravity" ] && mv /opt/antigravity/Antigravity /opt/antigravity/antigravity
     chmod +x /opt/antigravity/antigravity
 fi
-info "Configuring Openbox and window manager bounds..."
-
-# Configure Openbox for strict kiosk mode natively (minimal rc.xml)
-mkdir -p /root/.config/openbox
-cat << 'EOF_RC' > /root/.config/openbox/rc.xml
-<?xml version="1.0" encoding="UTF-8"?>
-<openbox_config xmlns="http://openbox.org/3.4/rc" xmlns:xi="http://www.w3.org/2001/XInclude">
-  <applications>
-    <application class="*">
-      <decor>no</decor>
-      <maximized>yes</maximized>
-    </application>
-  </applications>
-</openbox_config>
-EOF_RC
-
 # Create custom xdg-open to redirect browser launches to host via FIFO
 cat << 'EOF_XDG' > /usr/local/bin/xdg-open
 #!/bin/bash
@@ -272,7 +256,7 @@ for arg in "$@"; do
     fi
 done
 
-if ! pgrep -x "openbox" > /dev/null 2>&1; then openbox --sm-disable & sleep 0.2; fi
+if ! pgrep -x "matchbox-window-manager" > /dev/null 2>&1; then matchbox-window-manager -use_titlebar no & sleep 0.2; fi
 
 # Launch App
 if [ "$DEBUG_MODE" -eq 1 ]; then
@@ -410,7 +394,7 @@ export DISPLAY=:0
 cleanup_and_exit() {
     trap - SIGINT SIGTERM
     pkill -TERM -P $$ 2>/dev/null || true
-    pkill -f "antigravity|openbox" >/dev/null 2>&1 || true
+    pkill -f "antigravity|matchbox-window-manager" >/dev/null 2>&1 || true
     if [ -n "$FIFO_PID" ]; then kill -9 "$FIFO_PID" 2>/dev/null || true; fi
     rm -f "/data/data/com.termux/files/usr/tmp/termux_open_fifo"
     
@@ -464,7 +448,7 @@ draw_banner() {
     echo -e "\033[1;38;5;39m  ├${hline}┤\033[0m"
     echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mVersion        : \033[0m\033[1;38;5;48mv${ver}" $(( 18 + ${#ver} ))) \033[1;38;5;39m│\033[0m"
     echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mTarget OS      : \033[0m\033[1;37mAndroid Termux X11" 35) \033[1;38;5;39m│\033[0m"
-    echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mArchitecture   : \033[0m\033[1;37mDebian PRoot Openbox" 37) \033[1;38;5;39m│\033[0m"
+    echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mArchitecture   : \033[0m\033[1;37mDebian PRoot Matchbox" 39) \033[1;38;5;39m│\033[0m"
     echo -e "\033[1;38;5;39m  └${hline}┘\033[0m"
 }
 
@@ -483,7 +467,6 @@ DEBUG_MODE=0
 for arg in "$@"; do [ "$arg" == "--debug" ] && DEBUG_MODE=1; done
 
 if ! pgrep -f "virgl_test_server_android" > /dev/null 2>&1; then virgl_test_server_android >/dev/null 2>&1 & fi
-termux-x11-preference fullscreen:true displayStretch:true >/dev/null 2>&1 || true
 if ! pgrep -f "termux-x11" > /dev/null 2>&1; then termux-x11 :0 >/dev/null 2>&1 & sleep 1; fi
 
 if [ "$DEBUG_MODE" -eq 0 ]; then
