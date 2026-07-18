@@ -106,7 +106,7 @@ echo -e "\n${CYAN_BOLD}  [ Termux-X11 Dependency Check ]${RESET}"
 echo -e "   ${CYAN}ℹ${RESET}  You must have the Termux-X11 Android APK installed to view the GUI."
 echo -e "   ${CYAN}ℹ${RESET}  If you don't have it, press 'N' to open the download page."
 echo -e "   ${CYAN}ℹ${RESET}  If it is already installed, press Enter to continue."
-read -p "      Continue? [Y/n]: " check_x11
+read -r -p "      Continue? [Y/n]: " check_x11 </dev/tty || true
 if [[ "$check_x11" =~ ^[Nn]$ ]]; then
     termux-open "https://github.com/termux/termux-x11/releases"
     echo -e "\n${RED_BOLD}Aborted.${RESET} Please install the APK and run this script again."
