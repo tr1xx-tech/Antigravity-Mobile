@@ -1,8 +1,8 @@
 <div align="center">
-  <h1>🚀 Antigravity 2.0 Mobile Kiosk</h1>
+  <h1>🚀 Antigravity 2.0 Mobile</h1>
 
   <p>
-    <strong>A high-performance, native-patched, full-screen Kiosk GUI for Google Antigravity 2.0 on Android.</strong>
+    <strong>A high-performance, native-patched, full-screen GUI for Google Antigravity 2.0 on Android.</strong>
   </p>
 
   <p>
@@ -20,6 +20,8 @@
 ---
 
 ## ⚡ Quick Install
+
+**Prerequisite:** Ensure you have the [Termux-X11 Android APK](https://github.com/termux/termux-x11/releases) installed on your device.
 
 Copy and paste the following command into your Termux terminal to install or update Antigravity Mobile:
 

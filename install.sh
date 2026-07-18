@@ -34,7 +34,7 @@ trap on_host_interrupt SIGINT SIGTERM
 
 clear || true
 echo -e "\n${CYAN_BOLD}  ┌──────────────────────────────────────────────────┐${RESET}"
-echo -e "${CYAN_BOLD}  │ ${GRAY}ANTIGRAVITY 2.0  ${RESET}${PURPLE_BOLD}GUI TERMUX KIOSK                ${CYAN_BOLD}│${RESET}"
+echo -e "${CYAN_BOLD}  │ ${GRAY}ANTIGRAVITY 2.0  ${RESET}${PURPLE_BOLD}MOBILE GUI                      ${CYAN_BOLD}│${RESET}"
 echo -e "${CYAN_BOLD}  ├──────────────────────────────────────────────────┤${RESET}"
 echo -e "${CYAN_BOLD}  │ ${GRAY}Version        : ${RESET}${GREEN_BOLD}v${INSTALLER_VERSION}                      ${CYAN_BOLD}│${RESET}"
 echo -e "${CYAN_BOLD}  │ ${GRAY}Target OS      : ${RESET}${WHITE}Android Termux X11              ${CYAN_BOLD}│${RESET}"
@@ -48,6 +48,17 @@ fi
 
 step "Initializing Host Environment (Termux System)"
 pkg update -y >/dev/null 2>&1 || true
+
+# Verify Termux-X11 App is installed
+if am start -n com.termux.x11/com.termux.x11.MainActivity 2>&1 | grep -q "Error"; then
+    echo -e "\n${RED_BOLD}Warning: Termux-X11 Android App is not installed!${RESET}"
+    echo -e "You need the Termux-X11 app to render the GUI."
+    echo -e "Press Enter to open the Termux-X11 GitHub releases page..."
+    read -r
+    termux-open "https://github.com/termux/termux-x11/releases"
+    echo -e "Please install the APK and run this script again."
+    exit 1
+fi
 
 # Auto-detect GPU for minimal package installation
 EGL=$(getprop ro.hardware.egl 2>/dev/null | tr '[:upper:]' '[:lower:]')
@@ -210,7 +221,7 @@ rm -f "$FIFO"; mkfifo "$FIFO"
 FIFO_PID=$!
 
 echo -e "\n\033[1;38;5;39m  ┌──────────────────────────────────────────────────┐\033[0m"
-echo -e "\033[1;38;5;39m  │ \033[38;5;242mANTIGRAVITY 2.0  \033[0m\033[1;38;5;141mGUI TERMUX KIOSK                \033[1;38;5;39m│\033[0m"
+echo -e "\033[1;38;5;39m  │ \033[38;5;242mANTIGRAVITY 2.0  \033[0m\033[1;38;5;141mMOBILE GUI                      \033[1;38;5;39m│\033[0m"
 echo -e "\033[1;38;5;39m  ├──────────────────────────────────────────────────┤\033[0m"
 echo -e "\033[1;38;5;39m  │ \033[38;5;242mVersion        : \033[0m\033[1;38;5;48mv1.0.0                        \033[1;38;5;39m│\033[0m"
 echo -e "\033[1;38;5;39m  └──────────────────────────────────────────────────┘\033[0m"
