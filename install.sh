@@ -78,7 +78,7 @@ draw_banner() {
     echo -e "${CYAN_BOLD}  ├${hline}┤${RESET}"
     echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Version        : ${RESET}${GREEN_BOLD}v${ver}" $(( 18 + ${#ver} ))) ${CYAN_BOLD}│${RESET}"
     echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Target OS      : ${RESET}${WHITE}Android Termux X11" 35) ${CYAN_BOLD}│${RESET}"
-    echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Architecture   : ${RESET}${WHITE}Debian PRoot Matchbox" 38) ${CYAN_BOLD}│${RESET}"
+    echo -e "${CYAN_BOLD}  │ $(pad_text "${GRAY}Architecture   : ${RESET}${WHITE}Debian PRoot Ratpoison" 39) ${CYAN_BOLD}│${RESET}"
     echo -e "${CYAN_BOLD}  └${hline}┘${RESET}"
 }
 
@@ -168,12 +168,12 @@ info "Updating Debian package lists..."
 apt-get update -y >/dev/null 2>&1
 
 info "Installing X11, GTK, graphics, and secure keyring dependencies..."
-apt-get install -y --no-install-recommends matchbox-window-manager curl wget ca-certificates tar \
+apt-get install -y --no-install-recommends ratpoison curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2 libatk1.0-0 libcups2 libatk-bridge2.0-0 \
     libgtk-3-0 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri \
     dbus-x11 gnome-keyring libsecret-1-0 >/dev/null 2>&1 || \
-apt-get install -y --no-install-recommends matchbox-window-manager curl wget ca-certificates tar \
+apt-get install -y --no-install-recommends ratpoison curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libatk1.0-0t64 libcups2t64 libatk-bridge2.0-0t64 \
     libgtk-3-0t64 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri \
@@ -256,7 +256,11 @@ for arg in "$@"; do
     fi
 done
 
-if ! pgrep -x "matchbox-window-manager" > /dev/null 2>&1; then matchbox-window-manager -use_titlebar no & sleep 0.2; fi
+if ! pgrep -x "ratpoison" > /dev/null 2>&1; then
+    echo "startup_message off" > /tmp/ratpoisonrc
+    ratpoison -f /tmp/ratpoisonrc &
+    sleep 0.2
+fi
 
 # Launch App
 if [ "$DEBUG_MODE" -eq 1 ]; then
@@ -394,7 +398,7 @@ export DISPLAY=:0
 cleanup_and_exit() {
     trap - SIGINT SIGTERM
     pkill -TERM -P $$ 2>/dev/null || true
-    pkill -f "antigravity|matchbox-window-manager" >/dev/null 2>&1 || true
+    pkill -f "antigravity|ratpoison" >/dev/null 2>&1 || true
     if [ -n "$FIFO_PID" ]; then kill -9 "$FIFO_PID" 2>/dev/null || true; fi
     rm -f "/data/data/com.termux/files/usr/tmp/termux_open_fifo"
     
@@ -448,7 +452,7 @@ draw_banner() {
     echo -e "\033[1;38;5;39m  ├${hline}┤\033[0m"
     echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mVersion        : \033[0m\033[1;38;5;48mv${ver}" $(( 18 + ${#ver} ))) \033[1;38;5;39m│\033[0m"
     echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mTarget OS      : \033[0m\033[1;37mAndroid Termux X11" 35) \033[1;38;5;39m│\033[0m"
-    echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mArchitecture   : \033[0m\033[1;37mDebian PRoot Matchbox" 39) \033[1;38;5;39m│\033[0m"
+    echo -e "\033[1;38;5;39m  │ $(pad_text "\033[38;5;242mArchitecture   : \033[0m\033[1;37mDebian PRoot Ratpoison" 41) \033[1;38;5;39m│\033[0m"
     echo -e "\033[1;38;5;39m  └${hline}┘\033[0m"
 }
 
