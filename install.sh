@@ -247,7 +247,7 @@ export GNOME_KEYRING_PID
 # Hardware Acceleration Flags
 export GALLIUM_DRIVER=virpipe
 export MESA_GL_VERSION_OVERRIDE=4.0
-GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=egl --enable-webgl --enable-accelerated-2d-canvas --num-raster-threads=4 --start-maximized --disable-gpu-sandbox"
+GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=egl --enable-webgl --enable-accelerated-2d-canvas --num-raster-threads=4 --start-maximized --disable-gpu-sandbox --force-device-scale-factor=2"
 
 SOFTWARE_MODE=0
 DEBUG_MODE=0
@@ -265,7 +265,7 @@ done
 if [ "$SOFTWARE_MODE" -eq 1 ]; then
     export LIBGL_ALWAYS_SOFTWARE=1
     export GALLIUM_DRIVER=llvmpipe
-    GPU_ARGS="--disable-gpu"
+    GPU_ARGS="--disable-gpu --force-device-scale-factor=2"
 fi
 
 if ! pgrep -f "matchbox-window-manager" > /dev/null 2>&1; then matchbox-window-manager -use_titlebar no & sleep 0.2; fi
