@@ -100,9 +100,10 @@ fi
 
 step "Initializing Host Environment (Termux System)"
 info "Updating Termux repository mirrors (this may take a few moments)..."
-pkg update -y >/dev/null 2>&1 || true
-
-
+# Use apt directly to avoid SSL/curl bootstrap issues with pkg
+apt update -y >/dev/null 2>&1 || pkg update -y >/dev/null 2>&1 || true
+# Full upgrade to fix any broken package states (e.g. libngtcp2_crypto_ossl SSL mismatch)
+apt full-upgrade -y >/dev/null 2>&1 || true
 
 # Auto-detect GPU for minimal package installation
 EGL=$(getprop ro.hardware.egl 2>/dev/null | tr '[:upper:]' '[:lower:]')
@@ -121,8 +122,9 @@ else
 fi
 
 info "Installing core system packages..."
-pkg install -y proot-distro curl tar python x11-repo >/dev/null 2>&1 || true
-pkg update -y >/dev/null 2>&1 || true
+# Enable x11 repo first so termux-x11-nightly is discoverable
+pkg install -y x11-repo >/dev/null 2>&1 || true
+pkg install -y proot-distro curl tar python >/dev/null 2>&1 || true
 info "Installing GUI and hardware acceleration drivers..."
 pkg install -y termux-x11-nightly virglrenderer-android $GPU_PKG >/dev/null 2>&1 || true
 
@@ -135,7 +137,7 @@ done
 
 if [ ${#MISSING_PKGS[@]} -ne 0 ]; then
     error "Failed to install required host packages: ${MISSING_PKGS[*]}"
-    echo -e "   ${CYAN}ℹ${RESET}  ${DIM}└─ ${RESET}Please run 'pkg update -y' manually and check for Termux repository errors."
+    echo -e "   ${CYAN}ℹ${RESET}  ${DIM}└─ ${RESET}Run: apt update && apt full-upgrade -y && pkg install -y x11-repo termux-x11-nightly virglrenderer-android"
     exit 1
 fi
 success "Host utilities and dynamic GPU drivers successfully installed."
