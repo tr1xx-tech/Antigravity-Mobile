@@ -33,7 +33,7 @@ curl -sL https://raw.githubusercontent.com/tr1xx-tech/Antigravity-Mobile/main/in
 
 ## 🌟 Features
 
-* **Full-Screen Kiosk Mode:** Strips away all window borders and decorations using a custom Openbox configuration for a clean, immersive coding experience.
+* **Full-Screen Kiosk Mode:** Strips away all window borders and decorations using the Matchbox Window Manager for a clean, immersive coding experience.
 * **Auto-Detect GPU Drivers:** Dynamically fetches and installs `freedreno` or `panfrost` Vulkan drivers depending on your Android device's SoC.
 * **Native VA39 Bypass:** Includes a custom Python binary patcher that seamlessly resolves the TCMalloc 39-bit memory address limitations on Android without heavy ptrace overhead.
 * **Self-Healing Updates:** If the Antigravity language server updates itself, the custom launcher (`gem`) automatically detects the unpatched binary and re-applies the VA39 bypass on the fly.
@@ -57,7 +57,7 @@ gem --debug
 
 * **Host:** Termux + Termux-X11 + Virgl/Zink Mesa Drivers
 * **Container:** Debian PRoot (proot-distro)
-* **Window Manager:** Openbox (Minimal Kiosk Mode)
+* **Window Manager:** Matchbox Window Manager (Native Kiosk Mode)
 * **Application:** Google Antigravity 2.0 (Electron)
 
 ## 🤝 Contributing
