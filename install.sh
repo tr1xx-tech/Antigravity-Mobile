@@ -181,6 +181,15 @@ apt-get install -y --no-install-recommends matchbox-window-manager curl wget ca-
     libgtk-3-0t64 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers \
     dbus-x11 gnome-keyring libsecret-1-0 >/dev/null 2>&1 || true
 
+info "Installing icon and emoji fonts..."
+apt-get install -y --no-install-recommends \
+    fonts-noto-core \
+    fonts-noto-color-emoji \
+    fonts-material-design-icons-iconfont \
+    fonts-font-awesome \
+    fontconfig >/dev/null 2>&1 || true
+fc-cache -f >/dev/null 2>&1 || true
+
 mkdir -p /opt/antigravity
 if [ ! -x "/opt/antigravity/antigravity" ]; then
     info "Resolving Antigravity Core download URL..."
