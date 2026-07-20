@@ -260,7 +260,7 @@ export GDK_SCALE=3
 export GDK_DPI_SCALE=1
 export QT_SCALE_FACTOR=3
 export ELM_SCALE=3
-export XCURSOR_SIZE=72
+export XCURSOR_SIZE=36
 echo "Xft.dpi: 288" | xrdb -merge 2>/dev/null || true
 
 # Hardware Acceleration Flags
