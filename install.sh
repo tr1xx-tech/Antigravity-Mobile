@@ -487,7 +487,42 @@ if [ "$BIN_PATH" -nt "$FLAG_FILE" ] || [ ! -f "$FLAG_FILE" ]; then
 fi
 
 DEBUG_MODE=0
-for arg in "$@"; do [ "$arg" == "--debug" ] && DEBUG_MODE=1; done
+for arg in "$@"; do
+    if [ "$arg" == "--debug" ]; then
+        DEBUG_MODE=1
+    elif [ "$arg" == "--proot-reset" ]; then
+        echo -e "\n\033[1;33m⚠️ WARNING: This will completely reinstall the proot container and all its files.\033[0m"
+        read -p "Are you sure you want to proceed? [y/N]: " confirm
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            echo -e "\033[1;32mResetting proot-distro...\033[0m"
+            proot-distro reset debian
+            echo -e "\033[1;32mReinstalling Antigravity-Mobile...\033[0m"
+            curl -sL https://raw.githubusercontent.com/tr1xx-tech/Antigravity-Mobile/main/install.sh | bash
+            exit 0
+        else
+            echo "Cancelled."
+            exit 0
+        fi
+    elif [ "$arg" == "--full-delete" ]; then
+        echo -e "\n\033[1;31m⚠️ WARNING: This will completely DELETE the application, container, caches, and all related files.\033[0m"
+        read -p "Are you sure you want to proceed? [y/N]: " confirm
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            echo -e "\033[1;31mDeleting proot-distro container...\033[0m"
+            proot-distro remove debian >/dev/null 2>&1 || true
+            echo -e "\033[1;31mRemoving patcher scripts...\033[0m"
+            rm -f "$PREFIX/bin/patch_va39.py"
+            echo -e "\033[1;31mRemoving Antigravity-Mobile repository...\033[0m"
+            rm -rf "$HOME/Antigravity-Mobile"
+            echo -e "\033[1;31mRemoving gem launcher...\033[0m"
+            rm -f "$PREFIX/bin/gem"
+            echo -e "\033[1;32mSuccessfully deleted everything. You can close Termux now.\033[0m"
+            exit 0
+        else
+            echo "Cancelled."
+            exit 0
+        fi
+    fi
+done
 
 if ! pgrep -f "virgl_test_server_android" > /dev/null 2>&1; then VIRGL_RENDERER_USE_EGL=1 virgl_test_server_android >/dev/null 2>&1 & fi
 if ! pgrep -f "termux-x11" > /dev/null 2>&1; then termux-x11 :0 >/dev/null 2>&1 & sleep 1; fi
