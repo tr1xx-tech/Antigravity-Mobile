@@ -517,17 +517,20 @@ for arg in "$@"; do
             exit 0
         fi
     elif [ "$arg" == "--full-delete" ]; then
-        echo -e "\n\033[1;31m⚠️ WARNING: This will completely DELETE the application, container, caches, and all related files.\033[0m"
+        echo -e "\n\033[1;31m⚠️  WARNING: This will completely DELETE the application, container, caches, and all related files.\033[0m"
         read -p "Are you sure you want to proceed? [y/N]: " confirm
         if [[ "$confirm" =~ ^[Yy]$ ]]; then
             echo -e "\033[1;31mDeleting proot-distro container...\033[0m"
             proot-distro remove debian >/dev/null 2>&1 || true
+            echo -e "\033[1;31mRemoving Termux host packages...\033[0m"
+            pkg uninstall -y proot-distro termux-x11-nightly >/dev/null 2>&1 || true
             echo -e "\033[1;31mRemoving patcher scripts...\033[0m"
             rm -f "$PREFIX/bin/patch_va39.py"
-            echo -e "\033[1;31mRemoving Antigravity-Mobile repository...\033[0m"
-            rm -rf "$HOME/Antigravity-Mobile"
             echo -e "\033[1;31mRemoving gem launcher...\033[0m"
             rm -f "$PREFIX/bin/gem"
+            echo -e "\033[1;31mRemoving Antigravity config and cache...\033[0m"
+            rm -rf "$HOME/.config/Antigravity"
+            rm -f "$HOME/antigravity_debug.log"
             echo -e "\033[1;32mSuccessfully deleted everything. You can close Termux now.\033[0m"
             exit 0
         else
