@@ -105,31 +105,17 @@ apt update -y >/dev/null 2>&1 || pkg update -y >/dev/null 2>&1 || true
 # Full upgrade to fix any broken package states (e.g. libngtcp2_crypto_ossl SSL mismatch)
 apt full-upgrade -y >/dev/null 2>&1 || true
 
-# Auto-detect GPU for minimal package installation
-EGL=$(getprop ro.hardware.egl 2>/dev/null | tr '[:upper:]' '[:lower:]')
-BOARD=$(getprop ro.hardware 2>/dev/null | tr '[:upper:]' '[:lower:]')
-PLATFORM=$(getprop ro.board.platform 2>/dev/null | tr '[:upper:]' '[:lower:]')
-
-GPU_PKG=""
-if [[ "$EGL" == *"adreno"* ]] || [[ "$BOARD" == *"qcom"* ]] || [[ "$PLATFORM" == *"qcom"* ]] || [[ "$PLATFORM" == *"snapdragon"* ]]; then
-    GPU_PKG="mesa-vulkan-icd-freedreno"
-    info "Detected Adreno GPU. Selecting freedreno drivers."
-elif [[ "$EGL" == *"mali"* ]] || [[ "$BOARD" == *"mtk"* ]] || [[ "$BOARD" == *"exynos"* ]] || [[ "$PLATFORM" == *"mtk"* ]]; then
-    GPU_PKG=""
-    info "Detected Mali/Exynos/MediaTek GPU. Using system driver pipeline."
-else
-    info "Could not auto-detect GPU. Falling back to software rendering packages."
-fi
+# Host packages are configured for direct GPU container translation
 
 info "Installing core system packages..."
 # Enable x11 repo first so termux-x11-nightly is discoverable
 pkg install -y x11-repo >/dev/null 2>&1 || true
 pkg install -y proot-distro curl tar python >/dev/null 2>&1 || true
 info "Installing GUI and hardware acceleration drivers..."
-pkg install -y termux-x11-nightly virglrenderer-android $GPU_PKG >/dev/null 2>&1 || true
+pkg install -y termux-x11-nightly >/dev/null 2>&1 || true
 
 MISSING_PKGS=()
-for cmd in proot-distro curl tar python3 termux-x11 virgl_test_server_android; do
+for cmd in proot-distro curl tar python3 termux-x11; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
         MISSING_PKGS+=("$cmd")
     fi
@@ -137,7 +123,7 @@ done
 
 if [ ${#MISSING_PKGS[@]} -ne 0 ]; then
     error "Failed to install required host packages: ${MISSING_PKGS[*]}"
-    echo -e "   ${CYAN}ℹ${RESET}  ${DIM}└─ ${RESET}Run: apt update && apt full-upgrade -y && pkg install -y x11-repo termux-x11-nightly virglrenderer-android"
+    echo -e "   ${CYAN}ℹ${RESET}  ${DIM}└─ ${RESET}Run: apt update && apt full-upgrade -y && pkg install -y x11-repo termux-x11-nightly"
     exit 1
 fi
 success "Host utilities and dynamic GPU drivers successfully installed."
@@ -174,12 +160,12 @@ apt-get install -y --no-install-recommends matchbox-window-manager curl wget ca-
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2 libatk1.0-0 libcups2 libatk-bridge2.0-0 \
     libgtk-3-0 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers \
-    dbus-x11 gnome-keyring libsecret-1-0 x11-xserver-utils >/dev/null 2>&1 || \
+    dbus-x11 gnome-keyring libsecret-1-0 x11-xserver-utils mesa-utils vulkan-tools >/dev/null 2>&1 || \
 apt-get install -y --no-install-recommends matchbox-window-manager curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libatk1.0-0t64 libcups2t64 libatk-bridge2.0-0t64 \
     libgtk-3-0t64 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers \
-    dbus-x11 gnome-keyring libsecret-1-0 x11-xserver-utils >/dev/null 2>&1 || true
+    dbus-x11 gnome-keyring libsecret-1-0 x11-xserver-utils mesa-utils vulkan-tools >/dev/null 2>&1 || true
 
 info "Installing icon and emoji fonts..."
 apt-get install -y --no-install-recommends \
@@ -189,6 +175,12 @@ apt-get install -y --no-install-recommends \
     fonts-font-awesome \
     fontconfig >/dev/null 2>&1 || true
 fc-cache -f >/dev/null 2>&1 || true
+
+info "Downloading optimized graphics drivers for Android containers..."
+wget -q --show-progress "https://github.com/lfdevs/mesa-for-android-container/releases/download/mesa-26.2.0-devel-20260709/mesa-for-android-container_26.2.0-devel-20260709_debian_trixie_arm64.tar.gz" -O /tmp/mesa-zink.tar.gz
+info "Installing optimized Turnip and Zink graphics drivers..."
+tar -xzf /tmp/mesa-zink.tar.gz -C /
+rm -f /tmp/mesa-zink.tar.gz
 
 mkdir -p /opt/antigravity
 if [ ! -x "/opt/antigravity/antigravity" ]; then
@@ -225,6 +217,8 @@ cat << 'EOF_RUN' > /opt/antigravity/run.sh
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export DISPLAY=:0
 export ELECTRON_OZONE_PLATFORM_HINT=x11
+export GDK_BACKEND=x11
+export NO_AT_BRIDGE=1
 export XDG_RUNTIME_DIR=/tmp/runtime-root
 mkdir -p "$XDG_RUNTIME_DIR" 2>/dev/null || true
 
@@ -263,10 +257,18 @@ export ELM_SCALE=3
 export XCURSOR_SIZE=36
 echo "Xft.dpi: 288" | xrdb -merge 2>/dev/null || true
 
-# Hardware Acceleration Flags
-export GALLIUM_DRIVER=virpipe
-export MESA_GL_VERSION_OVERRIDE=4.0
-GPU_ARGS="--ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=egl --enable-webgl --enable-accelerated-2d-canvas --num-raster-threads=4 --start-maximized --disable-gpu-sandbox --force-device-scale-factor=3"
+# Hardware Acceleration Flags (Native Zink + Turnip KGSL)
+export GALLIUM_DRIVER=zink
+export MESA_LOADER_DRIVER_OVERRIDE=zink
+export TU_DEBUG=sysmem,noconform
+export ZINK_DESCRIPTORS=lazy
+export MESA_VK_WSI_PRESENT_MODE=mailbox
+export MESA_VK_IGNORE_EXTENSIONS="VK_KHR_calibrated_timestamps VK_EXT_calibrated_timestamps"
+export MESA_GL_VERSION_OVERRIDE=4.6COMPAT
+export MESA_GLES_VERSION_OVERRIDE=3.2
+export MESA_GLTHREAD=true
+export vblank_mode=0
+GPU_ARGS="--ignore-gpu-blocklist --disable-vulkan --enable-gpu-rasterization --enable-oop-rasterization --canvas-oop-rasterization --gpu-rasterization-msaa-sample-count=0 --enable-zero-copy --use-gl=angle --enable-webgl --enable-accelerated-2d-canvas --num-raster-threads=8 --start-maximized --disable-gpu-sandbox --force-device-scale-factor=3"
 
 SOFTWARE_MODE=0
 DEBUG_MODE=0
@@ -293,7 +295,10 @@ if ! pgrep -f "matchbox-window-manager" > /dev/null 2>&1; then matchbox-window-m
 if [ "$DEBUG_MODE" -eq 1 ]; then
     export ELECTRON_ENABLE_LOGGING=1
     export ELECTRON_ENABLE_STACK_DUMPING=1
-    exec /opt/antigravity/antigravity --no-sandbox $GPU_ARGS --enable-logging --v=1 "${ARGS[@]}"
+    export LIBGL_DEBUG=verbose
+    export MESA_DEBUG=1
+    export EGL_LOG_LEVEL=debug
+    exec /opt/antigravity/antigravity --no-sandbox $GPU_ARGS --enable-logging --v=1 --log-level=0 "${ARGS[@]}"
 else
     exec /opt/antigravity/antigravity --no-sandbox $GPU_ARGS "${ARGS[@]}" >/dev/null 2>&1
 fi
@@ -532,7 +537,6 @@ for arg in "$@"; do
     fi
 done
 
-if ! pgrep -f "virgl_test_server_android" > /dev/null 2>&1; then VIRGL_RENDERER_USE_EGL=1 virgl_test_server_android >/dev/null 2>&1 & fi
 if ! pgrep -f "termux-x11" > /dev/null 2>&1; then termux-x11 :0 >/dev/null 2>&1 & sleep 1; fi
 
 if [ "$DEBUG_MODE" -eq 0 ]; then
@@ -589,12 +593,12 @@ PROOT_ARGS+=( --bind="/data/data/com.termux/cache" --bind="$HOME" --bind="$PREFI
 
 # Launch natively (Binary patch is now guaranteed)
 if [ "$DEBUG_MODE" -eq 1 ]; then
-    /data/data/com.termux/files/usr/bin/proot "${PROOT_ARGS[@]}" /opt/antigravity/run.sh "$@" &
+    echo -e "\033[1;33m[DEBUG] Running in foreground. Logs are saved to /data/data/com.termux/files/home/antigravity_debug.log\033[0m"
+    /data/data/com.termux/files/usr/bin/proot "${PROOT_ARGS[@]}" /opt/antigravity/run.sh "$@" 2>&1 | tee /data/data/com.termux/files/home/antigravity_debug.log
 else
     /data/data/com.termux/files/usr/bin/proot "${PROOT_ARGS[@]}" /opt/antigravity/run.sh "$@" >/dev/null 2>&1 &
+    wait "$!" 2>/dev/null || true
 fi
-
-wait "$!" 2>/dev/null || true
 cleanup_and_exit
 EOF_TERMUX
 
