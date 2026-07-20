@@ -174,12 +174,12 @@ apt-get install -y --no-install-recommends matchbox-window-manager curl wget ca-
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2 libatk1.0-0 libcups2 libatk-bridge2.0-0 \
     libgtk-3-0 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers \
-    dbus-x11 gnome-keyring libsecret-1-0 >/dev/null 2>&1 || \
+    dbus-x11 gnome-keyring libsecret-1-0 x11-xserver-utils >/dev/null 2>&1 || \
 apt-get install -y --no-install-recommends matchbox-window-manager curl wget ca-certificates tar \
     libnss3 libnspr4 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libatk1.0-0t64 libcups2t64 libatk-bridge2.0-0t64 \
     libgtk-3-0t64 libgl1 libglx-mesa0 libegl1 libgl1-mesa-dri mesa-vulkan-drivers \
-    dbus-x11 gnome-keyring libsecret-1-0 >/dev/null 2>&1 || true
+    dbus-x11 gnome-keyring libsecret-1-0 x11-xserver-utils >/dev/null 2>&1 || true
 
 info "Installing icon and emoji fonts..."
 apt-get install -y --no-install-recommends \
@@ -254,6 +254,14 @@ echo -n "" | gnome-keyring-daemon --unlock --components=secrets >/dev/null 2>&1 
 eval $(gnome-keyring-daemon --start --components=secrets)
 export GNOME_KEYRING_CONTROL
 export GNOME_KEYRING_PID
+
+# Global UI Scaling (3x)
+export GDK_SCALE=3
+export GDK_DPI_SCALE=1
+export QT_SCALE_FACTOR=3
+export ELM_SCALE=3
+export XCURSOR_SIZE=72
+echo "Xft.dpi: 288" | xrdb -merge 2>/dev/null || true
 
 # Hardware Acceleration Flags
 export GALLIUM_DRIVER=virpipe
