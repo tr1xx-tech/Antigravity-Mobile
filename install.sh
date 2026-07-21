@@ -110,12 +110,12 @@ apt full-upgrade -y >/dev/null 2>&1 || true
 info "Installing core system packages..."
 # Enable x11 repo first so termux-x11-nightly is discoverable
 pkg install -y x11-repo >/dev/null 2>&1 || true
-pkg install -y proot-distro curl tar python >/dev/null 2>&1 || true
+pkg install -y proot-distro curl tar python xdotool >/dev/null 2>&1 || true
 info "Installing GUI and hardware acceleration drivers..."
 pkg install -y termux-x11-nightly >/dev/null 2>&1 || true
 
 MISSING_PKGS=()
-for cmd in proot-distro curl tar python3 termux-x11; do
+for cmd in proot-distro curl tar python3 termux-x11 xdotool; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
         MISSING_PKGS+=("$cmd")
     fi
@@ -123,7 +123,7 @@ done
 
 if [ ${#MISSING_PKGS[@]} -ne 0 ]; then
     error "Failed to install required host packages: ${MISSING_PKGS[*]}"
-    echo -e "   ${CYAN}ℹ${RESET}  ${DIM}└─ ${RESET}Run: apt update && apt full-upgrade -y && pkg install -y x11-repo termux-x11-nightly"
+    echo -e "   ${CYAN}ℹ${RESET}  ${DIM}└─ ${RESET}Run: apt update && apt full-upgrade -y && pkg install -y x11-repo termux-x11-nightly xdotool"
     exit 1
 fi
 success "Host utilities and dynamic GPU drivers successfully installed."
@@ -419,6 +419,26 @@ print("   \033[1;32m✓\033[0m  Native VA39 Binary Patch applied successfully.")
 EOF_PATCHER
 python3 "$PATCHER"
 
+# Deploy helper watchdog script for Termux host to track window presence
+GEM_WATCHDOG="$PREFIX/bin/gem-watchdog"
+cat << 'EOF_WATCHDOG' > "$GEM_WATCHDOG"
+#!/usr/bin/env bash
+sleep 8
+while true; do
+    if ! pgrep -f "/opt/antigravity/antigravity" >/dev/null; then
+        exit 0
+    fi
+    if ! DISPLAY=:0 xdotool search --onlyvisible --class "antigravity" >/dev/null 2>&1; then
+        # Visible window is gone but process is alive -> user clicked close button
+        pkill -f "/opt/antigravity/antigravity" >/dev/null 2>&1 || true
+        exit 0
+    fi
+    sleep 2
+done
+EOF_WATCHDOG
+chmod +x "$GEM_WATCHDOG"
+if command -v termux-fix-shebang >/dev/null 2>&1; then termux-fix-shebang "$GEM_WATCHDOG"; fi
+
 step "Deploying Command-Line Launcher ('gem')"
 GEM_LAUNCHER="$PREFIX/bin/gem"
 cat << 'EOF_TERMUX' > "$GEM_LAUNCHER"
@@ -429,6 +449,7 @@ export DISPLAY=:0
 
 cleanup_and_exit() {
     trap - SIGINT SIGTERM
+    pkill -f gem-watchdog >/dev/null 2>&1 || true
     pkill -TERM -P $$ 2>/dev/null || true
     pkill -f "antigravity|matchbox" >/dev/null 2>&1 || true
     if [ -n "$FIFO_PID" ]; then kill -9 "$FIFO_PID" 2>/dev/null || true; fi
@@ -540,18 +561,6 @@ for arg in "$@"; do
     fi
 done
 
-if ! pgrep -f "termux-x11" > /dev/null 2>&1; then termux-x11 :0 >/dev/null 2>&1 & sleep 1; fi
-
-if [ "$DEBUG_MODE" -eq 0 ]; then
-    if ! am start -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1; then
-        echo -e "\n\033[1;31m✗ Error: Termux-X11 Android App is not installed!\033[0m"
-        echo -e "\033[1;34mℹ\033[0m You need the Termux-X11 app to view the GUI."
-        echo -e "\033[1;34mℹ\033[0m Opening the GitHub download page..."
-        termux-open "https://github.com/termux/termux-x11/releases"
-        exit 1
-    fi
-fi
-
 PROOT_ARGS=(
     --kill-on-exit --link2symlink --sysvipc
     --kernel-release="Linux localhost 6.17.0-PRoot-Distro #1 SMP PREEMPT_DYNAMIC Fri, 10 Oct 2025 00:00:00 +0000 aarch64 localdomain -1"
@@ -594,14 +603,37 @@ if [ -d "/storage/self/primary" ]; then PROOT_ARGS+=(--bind=/storage/self/primar
 
 PROOT_ARGS+=( --bind="/data/data/com.termux/cache" --bind="$HOME" --bind="$PREFIX" )
 
-# Launch natively (Binary patch is now guaranteed)
-if [ "$DEBUG_MODE" -eq 1 ]; then
-    echo -e "\033[1;33m[DEBUG] Running in foreground. Logs are saved to /data/data/com.termux/files/home/antigravity_debug.log\033[0m"
-    /data/data/com.termux/files/usr/bin/proot "${PROOT_ARGS[@]}" /opt/antigravity/run.sh "$@" 2>&1 | tee /data/data/com.termux/files/home/antigravity_debug.log
-else
-    /data/data/com.termux/files/usr/bin/proot "${PROOT_ARGS[@]}" /opt/antigravity/run.sh "$@" >/dev/null 2>&1 &
-    wait "$!" 2>/dev/null || true
-fi
+# Launch loop (automatic restart on close/disconnect)
+while true; do
+    if ! pgrep -f "termux-x11" > /dev/null 2>&1; then
+        termux-x11 :0 >/dev/null 2>&1 &
+        sleep 1
+    fi
+
+    if [ "$DEBUG_MODE" -eq 0 ]; then
+        if ! am start -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1; then
+            echo -e "\n\033[1;31m✗ Error: Termux-X11 Android App is not installed!\033[0m"
+            echo -e "\033[1;34mℹ\033[0m You need the Termux-X11 app to view the GUI."
+            echo -e "\033[1;34mℹ\033[0m Opening the GitHub download page..."
+            termux-open "https://github.com/termux/termux-x11/releases"
+            exit 1
+        fi
+    fi
+
+    # Start X11 Window Monitor in background
+    gem-watchdog &
+
+    if [ "$DEBUG_MODE" -eq 1 ]; then
+        echo -e "\033[1;33m[DEBUG] Running in foreground. Logs are saved to /data/data/com.termux/files/home/antigravity_debug.log\033[0m"
+        /data/data/com.termux/files/usr/bin/proot "${PROOT_ARGS[@]}" /opt/antigravity/run.sh "$@" 2>&1 | tee /data/data/com.termux/files/home/antigravity_debug.log
+    else
+        /data/data/com.termux/files/usr/bin/proot "${PROOT_ARGS[@]}" /opt/antigravity/run.sh "$@" >/dev/null 2>&1 &
+        wait "$!" 2>/dev/null || true
+    fi
+
+    pkill -f gem-watchdog >/dev/null 2>&1 || true
+    sleep 1
+done
 cleanup_and_exit
 EOF_TERMUX
 
