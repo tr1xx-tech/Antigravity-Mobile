@@ -176,27 +176,150 @@ apt-get install -y --no-install-recommends \
     fontconfig >/dev/null 2>&1 || true
 fc-cache -f >/dev/null 2>&1 || true
 
-info "Downloading optimized graphics drivers for Android containers..."
-wget -q --show-progress "https://github.com/lfdevs/mesa-for-android-container/releases/download/mesa-26.2.0-devel-20260709/mesa-for-android-container_26.2.0-devel-20260709_debian_trixie_arm64.tar.gz" -O /tmp/mesa-zink.tar.gz
-info "Installing optimized Turnip and Zink graphics drivers..."
-tar -xzf /tmp/mesa-zink.tar.gz -C /
-rm -f /tmp/mesa-zink.tar.gz
+info "Resolving latest package versions (Antigravity 2.0 & Mesa)..."
+cat << 'EOF_RESOLVER' > /usr/local/bin/resolve_urls.py
+#!/usr/bin/env python3
+import urllib.request
+import re
+import json
+import gzip
+import sys
+
+def resolve_antigravity():
+    base_url = "https://antigravity.google/download"
+    visited = set()
+
+    def fetch(url):
+        if url in visited:
+            return ""
+        visited.add(url)
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)", "Accept-Encoding": "gzip"})
+            res = urllib.request.urlopen(req)
+            data = res.read()
+            if res.info().get("Content-Encoding") == "gzip":
+                data = gzip.decompress(data)
+            return data.decode("utf-8", errors="ignore")
+        except Exception:
+            return ""
+
+    html = fetch(base_url)
+    if not html:
+        return "", ""
+
+    script_urls = set()
+    for s in re.findall(r'src=["\'](.*?\.(?:js))["\']', html):
+        script_urls.add("https://antigravity.google" + s if s.startswith("/") else s)
+
+    text_to_search = [html]
+    for surl in script_urls:
+        stext = fetch(surl)
+        if stext:
+            text_to_search.append(stext)
+            for imp in re.findall(r'from\s*["\'](\./[^"\']+\.js)["\']', stext):
+                text_to_search.append(fetch("https://antigravity.google/_astro/" + imp.lstrip("./")))
+
+    all_text = "\n".join(text_to_search).replace("\\/", "/")
+    
+    found = re.findall(r'https://[^\s"\'<>]*/linux-arm/[^\s"\'<>]*\.tar\.gz', all_text, re.IGNORECASE)
+    if not found:
+        found = re.findall(r'https://[^\s"\'<>]*linux[^\s"\'<>]*\.tar\.gz', all_text, re.IGNORECASE)
+
+    if found:
+        hub_found = [u for u in found if "antigravity-hub" in u or "storage.googleapis.com" in u]
+        target = hub_found[0] if hub_found else found[0]
+        ver_match = re.search(r'/([\d\.\-]+)/linux-arm', target)
+        ver = ver_match.group(1) if ver_match else "latest"
+        return target, ver
+
+    return "", ""
+
+def resolve_mesa():
+    url = "https://api.github.com/repos/lfdevs/mesa-for-android-container/releases/latest"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        res = urllib.request.urlopen(req)
+        data = json.loads(res.read().decode("utf-8"))
+        tag = data.get("tag_name", "")
+        assets = data.get("assets", [])
+        debian_assets = [a.get("browser_download_url", "") for a in assets if "debian" in a.get("browser_download_url", "") and a.get("browser_download_url", "").endswith(".tar.gz")]
+        if debian_assets:
+            return debian_assets[0], tag
+        arm64_assets = [a.get("browser_download_url", "") for a in assets if "arm64" in a.get("browser_download_url", "") and a.get("browser_download_url", "").endswith(".tar.gz")]
+        if arm64_assets:
+            return arm64_assets[0], tag
+    except Exception:
+        try:
+            rel_req = urllib.request.Request("https://github.com/lfdevs/mesa-for-android-container/releases/latest", headers={"User-Agent": "Mozilla/5.0"})
+            rel_res = urllib.request.urlopen(rel_req)
+            tag = rel_res.geturl().split("/")[-1]
+            dl = f"https://github.com/lfdevs/mesa-for-android-container/releases/download/{tag}/mesa-for-android-container_{tag}_debian_trixie_arm64.tar.gz"
+            return dl, tag
+        except Exception:
+            pass
+    return "", ""
+
+if __name__ == "__main__":
+    ag_url, ag_ver = resolve_antigravity()
+    mesa_url, mesa_ver = resolve_mesa()
+    print(json.dumps({
+        "antigravity_url": ag_url,
+        "antigravity_version": ag_ver,
+        "mesa_url": mesa_url,
+        "mesa_version": mesa_ver
+    }))
+EOF_RESOLVER
+chmod +x /usr/local/bin/resolve_urls.py
+
+RESOLVED_JSON=$(/usr/local/bin/resolve_urls.py 2>/dev/null || echo "{}")
+
+AG_URL=$(echo "$RESOLVED_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('antigravity_url', ''))" 2>/dev/null || true)
+AG_VER=$(echo "$RESOLVED_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('antigravity_version', ''))" 2>/dev/null || true)
+MESA_URL=$(echo "$RESOLVED_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('mesa_url', ''))" 2>/dev/null || true)
+MESA_VER=$(echo "$RESOLVED_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('mesa_version', ''))" 2>/dev/null || true)
 
 mkdir -p /opt/antigravity
-if [ ! -x "/opt/antigravity/antigravity" ]; then
-    info "Resolving Antigravity Core download URL..."
-    DL_URL=$(curl -sL --compressed https://antigravity.google/download | grep -oE 'main-[A-Za-z0-9_-]+\.js' | head -n1 || true)
-    if [ -n "$DL_URL" ]; then DL_URL=$(curl -sL --compressed "https://antigravity.google/$DL_URL" | grep -oE 'https://[^" ]+/linux-arm/Antigravity\.tar\.gz' | head -n1 || true); fi
-    if [ -z "$DL_URL" ]; then DL_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub/2.2.1-5287492581195776/linux-arm/Antigravity.tar.gz"; fi
-    
-    info "Downloading payload (this may take a minute)..."
-    wget -q --show-progress "$DL_URL" -O /tmp/antigravity.tar.gz
-    
-    info "Extracting and configuring binary..."
-    tar -xzf /tmp/antigravity.tar.gz -C /opt/antigravity --strip-components=1 2>/dev/null || tar -xzf /tmp/antigravity.tar.gz -C /opt/antigravity
-    rm -f /tmp/antigravity.tar.gz
-    [ -f "/opt/antigravity/Antigravity" ] && mv /opt/antigravity/Antigravity /opt/antigravity/antigravity
-    chmod +x /opt/antigravity/antigravity
+
+# --- Mesa Driver Installation & Version Check ---
+INSTALLED_MESA_VER=$(cat /opt/antigravity/.installed_mesa_version 2>/dev/null || true)
+
+if [ -n "$MESA_URL" ] && [ "$INSTALLED_MESA_VER" != "$MESA_VER" ]; then
+    info "Downloading latest graphics drivers ($MESA_VER)..."
+    wget -q --show-progress "$MESA_URL" -O /tmp/mesa-zink.tar.gz
+    info "Installing Turnip and Zink graphics drivers..."
+    tar -xzf /tmp/mesa-zink.tar.gz -C /
+    rm -f /tmp/mesa-zink.tar.gz
+    echo "$MESA_VER" > /opt/antigravity/.installed_mesa_version
+    info "Mesa drivers successfully updated to version $MESA_VER."
+else
+    DISPLAY_MESA_VER="${INSTALLED_MESA_VER:-${MESA_VER:-latest}}"
+    info "Mesa graphics drivers are up to date ($DISPLAY_MESA_VER)."
+fi
+
+# --- Antigravity 2.0 Package Installation & Version Check ---
+INSTALLED_AG_VER=$(cat /opt/antigravity/.installed_version 2>/dev/null || true)
+
+if [ ! -x "/opt/antigravity/antigravity" ] || { [ -n "$AG_VER" ] && [ "$INSTALLED_AG_VER" != "$AG_VER" ]; }; then
+    if [ -n "$AG_URL" ]; then
+        info "Downloading latest Antigravity 2.0 (${AG_VER:-latest})..."
+        wget -q --show-progress "$AG_URL" -O /tmp/antigravity.tar.gz
+        info "Extracting and updating Antigravity binaries..."
+        find /opt/antigravity -mindepth 1 -maxdepth 1 ! -name '.installed*' -exec rm -rf {} + 2>/dev/null || true
+        tar -xzf /tmp/antigravity.tar.gz -C /opt/antigravity --strip-components=1 2>/dev/null || tar -xzf /tmp/antigravity.tar.gz -C /opt/antigravity
+        rm -f /tmp/antigravity.tar.gz
+        [ -f "/opt/antigravity/Antigravity" ] && mv /opt/antigravity/Antigravity /opt/antigravity/antigravity
+        chmod +x /opt/antigravity/antigravity
+        [ -n "$AG_VER" ] && echo "$AG_VER" > /opt/antigravity/.installed_version
+        info "Antigravity Core successfully updated to version ${AG_VER:-latest}."
+    else
+        echo "Error: Could not resolve Antigravity 2.0 download URL from google.com."
+        if [ ! -x "/opt/antigravity/antigravity" ]; then
+            exit 1
+        fi
+    fi
+else
+    DISPLAY_AG_VER="${INSTALLED_AG_VER:-${AG_VER:-latest}}"
+    info "Antigravity Core is up to date ($DISPLAY_AG_VER)."
 fi
 # Replaced Openbox configurations with Matchbox window manager defaults
 
