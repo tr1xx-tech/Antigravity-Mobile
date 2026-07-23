@@ -177,7 +177,9 @@ apt-get install -y --no-install-recommends \
 fc-cache -f >/dev/null 2>&1 || true
 
 info "Resolving latest package versions (Antigravity 2.0 & Mesa)..."
-cat << 'EOF_RESOLVER' > /usr/local/bin/resolve_urls.py
+RESOLVER_SCRIPT="/tmp/resolve_urls.py"
+rm -f /usr/local/bin/resolve_urls.py
+cat << 'EOF_RESOLVER' > "$RESOLVER_SCRIPT"
 #!/usr/bin/env python3
 import urllib.request
 import re
@@ -269,9 +271,9 @@ if __name__ == "__main__":
         "mesa_version": mesa_ver
     }))
 EOF_RESOLVER
-chmod +x /usr/local/bin/resolve_urls.py
 
-RESOLVED_JSON=$(/usr/local/bin/resolve_urls.py 2>/dev/null || echo "{}")
+RESOLVED_JSON=$(python3 "$RESOLVER_SCRIPT" 2>/dev/null || echo "{}")
+rm -f "$RESOLVER_SCRIPT"
 
 AG_URL=$(echo "$RESOLVED_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('antigravity_url', ''))" 2>/dev/null || true)
 AG_VER=$(echo "$RESOLVED_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('antigravity_version', ''))" 2>/dev/null || true)
